@@ -307,14 +307,14 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
               setTimeout(() => {
                 overrideBackButton();
                 watchForBackButton(); 
-              }, 100);
-            }, 100);
+              }, 250);
+            }, 250);
             
             window.addEventListener('chatwoot:widget-visible', function(event) {
               hideBubblePermanently();
             });
             
-          }, 100); 
+          }, 250); 
           
           function hideBubblePermanently() {
             const existingStyle = document.getElementById('hide-chatwoot-bubble');
