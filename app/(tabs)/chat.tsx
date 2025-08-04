@@ -1,12 +1,11 @@
 import React, { useRef, useState } from 'react';
 import {
-    Alert,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ChatWebView } from '../../components/ChatWebView';
 import { ConfirmationModal } from '../../components/ConfirmationModal';
@@ -15,7 +14,7 @@ import { WebViewMessage } from '../../types/webview';
 
 export default function ChatScreen() {
   const [isVisible, setIsVisible] = useState(true);
-  const [messageStats, setMessageStats] = useState<any>(null);
+
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<{ pageName: string; caseId: string } | null>(null);
   const messageHandler = useRef(new WebViewMessageHandler()).current;
@@ -40,8 +39,7 @@ export default function ChatScreen() {
       }
     });
 
-    // Update stats
-    setMessageStats(messageHandler.getMessageStats());
+
   };
 
   const handleConfirmNavigation = () => {
@@ -76,7 +74,6 @@ export default function ChatScreen() {
 
   const clearHistory = () => {
     messageHandler.clearMessageHistory();
-    setMessageStats(messageHandler.getMessageStats());
     Alert.alert('✅ History Cleared', 'Message history has been cleared');
   };
 
@@ -87,10 +84,20 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🗨️ Chatwoot WebView Demo</Text>
-        <Text style={styles.subtitle}>
-          WebView integration with message logging
-        </Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.title}>chatbot react test</Text>
+            <Text style={styles.subtitle}>
+              WebView integration with message logging
+            </Text>
+          </View>
+          <TouchableOpacity 
+            style={[styles.button, styles.dangerButton]} 
+            onPress={clearHistory}
+          >
+            <Text style={styles.buttonText}>🗑️ Clear History</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.controls}>
@@ -109,50 +116,9 @@ export default function ChatScreen() {
         >
           <Text style={styles.buttonText}>📋 View History</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={[styles.button, styles.dangerButton]} 
-          onPress={clearHistory}
-        >
-          <Text style={styles.buttonText}>🗑️ Clear History</Text>
-        </TouchableOpacity>
       </View>
 
-      {messageStats && (
-        <View style={styles.statsContainer}>
-          <Text style={styles.statsTitle}>📊 Message Statistics</Text>
-          <ScrollView style={styles.statsScroll} horizontal>
-            <View style={styles.statsRow}>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{messageStats.totalMessages}</Text>
-                <Text style={styles.statLabel}>Total</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{messageStats.handledMessages}</Text>
-                <Text style={styles.statLabel}>Handled</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{messageStats.unhandledMessages}</Text>
-                <Text style={styles.statLabel}>Unhandled</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={styles.statNumber}>{messageStats.successRate.toFixed(1)}%</Text>
-                <Text style={styles.statLabel}>Success Rate</Text>
-              </View>
-            </View>
-          </ScrollView>
-        </View>
-      )}
 
-      <View style={styles.instructions}>
-        <Text style={styles.instructionTitle}>💡 Instructions:</Text>
-        <Text style={styles.instructionText}>
-          • The chat widget will load automatically{'\n'}
-          • Try clicking the back button in the chat to trigger navigation{'\n'}
-          • All messages are logged and can be viewed in the history{'\n'}
-          • Check the console for detailed logs
-        </Text>
-      </View>
 
       {isVisible && (
         <View style={styles.webviewContainer}>
@@ -182,12 +148,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#141414', // Netflix theme
   },
   header: {
-    padding: 20,
+    padding: 15,
+    paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#e50914', // Netflix red
     marginBottom: 5,
@@ -198,15 +170,15 @@ const styles = StyleSheet.create({
   },
   controls: {
     flexDirection: 'row',
-    padding: 15,
-    gap: 10,
+    padding: 10,
+    gap: 8,
     flexWrap: 'wrap',
   },
   button: {
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-    borderRadius: 8,
-    minWidth: 100,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    minWidth: 90,
     alignItems: 'center',
   },
   primaryButton: {
@@ -225,67 +197,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
-  statsContainer: {
-    margin: 15,
-    padding: 15,
-    backgroundColor: '#222',
-    borderRadius: 10,
-    borderLeftWidth: 4,
-    borderLeftColor: '#e50914',
-  },
-  statsTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 10,
-  },
-  statsScroll: {
-    maxHeight: 60,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 20,
-  },
-  statItem: {
-    alignItems: 'center',
-    minWidth: 70,
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#e50914',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#999',
-    marginTop: 2,
-  },
-  instructions: {
-    margin: 15,
-    padding: 15,
-    backgroundColor: '#1a1a1a',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  instructionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  instructionText: {
-    fontSize: 12,
-    color: '#ccc',
-    lineHeight: 18,
-  },
+
   webviewContainer: {
     flex: 1,
-    margin: 15,
-    borderRadius: 10,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#333',
+    backgroundColor: '#000',
   },
   webview: {
     flex: 1,
