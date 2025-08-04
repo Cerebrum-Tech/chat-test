@@ -96,7 +96,7 @@ export default function ChatScreen() {
           onPress={toggleWebView}
         >
           <Text style={styles.buttonText}>
-            {isVisible ? '👁️ Hide WebView' : '👁️ Show WebView'}
+            {isVisible ? '👁️ Hide' : '👁️ Show'}
           </Text>
         </TouchableOpacity>
 
@@ -104,14 +104,14 @@ export default function ChatScreen() {
           style={[styles.button, styles.secondaryButton]} 
           onPress={getMessageHistory}
         >
-          <Text style={styles.buttonText}>📋 View History</Text>
+          <Text style={styles.buttonText}>📋 History</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.button, styles.dangerButton]} 
           onPress={clearHistory}
         >
-          <Text style={styles.buttonText}>🗑️ Clear History</Text>
+          <Text style={styles.buttonText}>🗑️ Clear</Text>
         </TouchableOpacity>
       </View>
 
@@ -163,14 +163,14 @@ const styles = StyleSheet.create({
   controls: {
     flexDirection: 'row',
     padding: 10,
-    gap: 8,
-    flexWrap: 'wrap',
+    gap: 6,
+    flexWrap: 'nowrap',
+    justifyContent: 'center',
   },
   button: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
     borderRadius: 6,
-    minWidth: 90,
     alignItems: 'center',
   },
   primaryButton: {
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
   },
 
