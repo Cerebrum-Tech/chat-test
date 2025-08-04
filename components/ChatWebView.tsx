@@ -10,6 +10,36 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 }) => {
   const webViewRef = useRef<WebView>(null);
 
+  // Inject ReactNativeWebView before content loads (for external URLs)
+  const injectedJavaScriptBeforeContentLoaded = `
+    // Ensure ReactNativeWebView is available globally with proper fallback
+    if (!window.ReactNativeWebView) {
+      window.ReactNativeWebView = {
+        postMessage: function(message) {
+          console.warn('ReactNativeWebView not yet available, message would be:', message);
+        }
+      };
+    }
+    
+    // Wait for the actual ReactNativeWebView to be available
+    let checkCount = 0;
+    const checkForWebView = () => {
+      checkCount++;
+      if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+        console.log('ReactNativeWebView is ready after', checkCount, 'checks');
+        return;
+      }
+      if (checkCount < 50) { // Try for up to 5 seconds (50 * 100ms)
+        setTimeout(checkForWebView, 100);
+      } else {
+        console.error('ReactNativeWebView failed to initialize after 5 seconds');
+      }
+    };
+    
+    checkForWebView();
+    true;
+  `;
+
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     try {
       const message: WebViewMessage = JSON.parse(event.nativeEvent.data);
@@ -27,6 +57,24 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           console.log('🚀 Navigation Request:', message.Data);
           if (onNavigationRequest) {
             onNavigationRequest(message.Data.PageName, message.Data.CaseId);
+          }
+          break;
+        
+        case 'ChatMessage':
+          console.log('💬 Chat Message:', message.Data);
+          // Check if chat message contains navigation action
+          const chatMessage = message.Data?.message;
+          if (chatMessage?.content_attributes?.navigation_action && onNavigationRequest) {
+            console.log('🧭 Navigation found in ChatMessage');
+            const navData = chatMessage.content_attributes.navigation_data;
+            if (navData?.process === 'GotoPage') {
+              const { page_name, case_id } = navData.data;
+              // Convert snake_case to PascalCase for screen names
+              const screenName = page_name.split('_').map((word: string) => 
+                word.charAt(0).toUpperCase() + word.slice(1)
+              ).join('');
+              onNavigationRequest(screenName.replace('Screen', ''), case_id);
+            }
           }
           break;
         
@@ -104,24 +152,44 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       </div>
 
       <script>
+        // Global error handler for catching ReactNativeWebView issues
+        window.addEventListener('error', function(event) {
+          if (event.error && event.error.message && 
+              (event.error.message.includes('ReactNativeWebView') || 
+               event.error.message.includes('postMessage'))) {
+            console.warn('Caught ReactNativeWebView related error:', event.error.message);
+            event.preventDefault(); // Prevent the error from propagating
+          }
+        });
+        
+        // Helper function for safe postMessage calls
+        function safePostMessage(messageData) {
+          if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+            try {
+              window.ReactNativeWebView.postMessage(JSON.stringify(messageData));
+              return true;
+            } catch (error) {
+              console.error('Error sending message to React Native:', error);
+              return false;
+            }
+          } else {
+            console.warn('ReactNativeWebView not available for message:', messageData);
+            return false;
+          }
+        }
+        
         // Override console.log to also send logs to React Native
         const originalLog = console.log;
         console.log = function(...args) {
           originalLog.apply(console, args);
-          try {
-            if (window.ReactNativeWebView) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                Process: 'Log',
-                Data: {
-                  level: 'info',
-                  message: args.join(' '),
-                  timestamp: new Date().toISOString()
-                }
-              }));
+          safePostMessage({
+            Process: 'Log',
+            Data: {
+              level: 'info',
+              message: args.join(' '),
+              timestamp: new Date().toISOString()
             }
-          } catch (e) {
-            // Ignore errors in logging
-          }
+          });
         };
 
         window.chatwootSettings = {
@@ -133,6 +201,60 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           type: "standard",
           darkMode: "false"
         };
+        
+        // CRITICAL: Listen for messages from the Chatwoot widget iframe
+        window.addEventListener('message', function(event) {
+          // Check if it's a Chatwoot widget message
+          if (typeof event.data === 'string' && event.data.startsWith('chatwoot-widget:')) {
+            try {
+              // Parse the Chatwoot message
+              const messageData = JSON.parse(event.data.replace('chatwoot-widget:', ''));
+              
+              console.log('📨 Received message from Chatwoot iframe:', messageData);
+              
+              // Check if this is a navigation forward request
+              if (messageData.event === 'forwardToReactNative') {
+                console.log('🚀 Navigation forward request detected:', messageData);
+                
+                // Create the React Native message format
+                const rnMessage = {
+                  Process: messageData.type || 'GotoPage',
+                  Data: messageData.data
+                };
+                
+                // Send to React Native
+                if (safePostMessage(rnMessage)) {
+                  console.log('✅ Navigation message forwarded to React Native:', rnMessage);
+                } else {
+                  console.error('❌ Failed to forward message to React Native');
+                }
+              }
+            } catch (error) {
+              console.error('Error processing Chatwoot message:', error);
+            }
+          }
+        });
+        
+        /* Example of how to test sending a navigation message from within the Chatwoot widget:
+         * In your Chatwoot widget code or browser console:
+         * 
+         * // Method 1: Using postMessage directly:
+         * window.parent.postMessage('chatwoot-widget:' + JSON.stringify({
+         *   event: 'forwardToReactNative',
+         *   type: 'GotoPage',
+         *   data: {
+         *     PageName: 'AddressesScreen',
+         *     CaseId: 'case-123',
+         *     additionalParam: 'value'
+         *   }
+         * }), '*');
+         * 
+         * // Method 2: Using helper function in your widget:
+         * import { sendNavigationMessage } from 'widget/helpers/actionCable';
+         * sendNavigationMessage('AddressesScreen', 'case-123', {
+         *   additionalParam: 'value'
+         * });
+         */
       </script>
       
       <script>
@@ -296,20 +418,17 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
                   console.log('Back button clicked - executing custom action');
                   
                   // Execute your custom React Native WebView postMessage
-                  const message = JSON.stringify({
+                  const message = {
                     Process: 'GotoPage',
                     Data: {
                       PageName: 'AddressesScreen',
                       CaseId: 'xxx'
                     }
-                  });
+                  };
                   
-                  // Check if React Native WebView is available
-                  if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
-                    window.ReactNativeWebView.postMessage(message);
-                    console.log('Message sent to React Native:', message);
-                  } else {
-                    console.warn('ReactNativeWebView not available. Message would be:', message);
+                  // Send navigation message using safe helper
+                  if (safePostMessage(message)) {
+                    console.log('Navigation message sent to React Native:', message);
                   }
                   
                   return false;
@@ -358,30 +477,26 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           console.log("New message in widget:", e.detail);
           
           // Send message notification to React Native
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              Process: 'ChatMessage',
-              Data: {
-                message: e.detail,
-                timestamp: new Date().toISOString()
-              }
-            }));
-          }
+          safePostMessage({
+            Process: 'ChatMessage',
+            Data: {
+              message: e.detail,
+              timestamp: new Date().toISOString()
+            }
+          });
         });
         
         window.addEventListener("chatwoot:error", function(err) {
           console.error("Chatwoot widget error:", err);
           
           // Send error to React Native
-          if (window.ReactNativeWebView) {
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              Process: 'Error',
-              Data: {
-                error: err.toString(),
-                timestamp: new Date().toISOString()
-              }
-            }));
-          }
+          safePostMessage({
+            Process: 'Error',
+            Data: {
+              error: err.toString(),
+              timestamp: new Date().toISOString()
+            }
+          });
         });
       </script>
     </body>
@@ -394,6 +509,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         ref={webViewRef}
         source={{ html: htmlContent }}
         onMessage={handleWebViewMessage}
+        injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
@@ -401,6 +517,10 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         bounces={false}
         scrollEnabled={true}
         style={styles.webview}
+        // Additional properties from the example
+        thirdPartyCookiesEnabled={true}
+        userAgent="YourApp/1.0 (ReactNative)"
+        mixedContentMode="compatibility"
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.error('WebView error:', nativeEvent);

@@ -51,6 +51,7 @@ export class WebViewMessageHandler {
   ) {
     let handled = false;
 
+    console.log('🔍 Handling message:', message);
     try {
       switch (message.Process) {
         case 'GotoPage':
@@ -107,6 +108,16 @@ export class WebViewMessageHandler {
       message: message.Data.message,
       timestamp: message.Data.timestamp
     });
+
+    // Check if chat message contains navigation action
+    const chatMessage = message.Data?.message;
+    if (chatMessage?.content_attributes?.navigation_action) {
+      console.log('🧭 Navigation action found in chat message', chatMessage);
+      const navData = chatMessage.content_attributes.navigation_data;
+      if (navData?.process === 'GotoPage') {
+        console.log('📍 Processing embedded navigation:', navData.data);
+      }
+    }
 
     if (callback) {
       callback(message.Data);
