@@ -84,20 +84,10 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View>
-            <Text style={styles.title}>chatbot react test</Text>
-            <Text style={styles.subtitle}>
-              WebView integration with message logging
-            </Text>
-          </View>
-          <TouchableOpacity 
-            style={[styles.button, styles.dangerButton]} 
-            onPress={clearHistory}
-          >
-            <Text style={styles.buttonText}>🗑️ Clear History</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>chatbot react test</Text>
+        <Text style={styles.subtitle}>
+          WebView integration with message logging
+        </Text>
       </View>
 
       <View style={styles.controls}>
@@ -115,6 +105,13 @@ export default function ChatScreen() {
           onPress={getMessageHistory}
         >
           <Text style={styles.buttonText}>📋 View History</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.button, styles.dangerButton]} 
+          onPress={clearHistory}
+        >
+          <Text style={styles.buttonText}>🗑️ Clear History</Text>
         </TouchableOpacity>
       </View>
 
@@ -152,11 +149,6 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   title: {
     fontSize: 20,
