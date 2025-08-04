@@ -9,6 +9,13 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
   style
 }) => {
   const webViewRef = useRef<WebView>(null);
+  
+  // Get environment variables
+  const websiteToken = process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN || '';
+  const userId = process.env.EXPO_PUBLIC_CHATWOOT_USER_ID || '';
+  const accessToken = process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || '';
+  const customerConnectionId = process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || '';
+  const baseUrl = process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL || 'https://chat.footgolflegends.com';
 
   // Inject ReactNativeWebView before content loads (for external URLs)
   const injectedJavaScriptBeforeContentLoaded = `
@@ -259,7 +266,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       
       <script>
         (function(d, t) {
-          var BASE_URL = "https://chat.footgolflegends.com";
+          var BASE_URL = "${baseUrl}";
           var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
           g.src = BASE_URL + "/packs/js/sdk.js/?rn_test=true";
           g.async = true;
@@ -267,7 +274,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           s.parentNode.insertBefore(g, s);
           g.onload = function() {
             window.chatwootSDK.run({
-              websiteToken: "***REMOVED***",
+              websiteToken: "${websiteToken}",
               baseUrl: BASE_URL
             });
           };
@@ -280,13 +287,13 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           const loading = document.getElementById('loading');
           if (loading) loading.style.display = 'none';
           
-          window.$chatwoot.setUser("***REMOVED***", {
-            name: "***REMOVED***",
+          window.$chatwoot.setUser("${userId}", {
+            name: "${userId}",
           });
           
           window.$chatwoot.setCustomAttributes({
-            access_token: "***REMOVED***",
-            customer_connection_id: "***REMOVED***",
+            access_token: "${accessToken}",
+            customer_connection_id: "${customerConnectionId}",
           });
           
           console.log("Chatwoot: visitor identified & custom attributes sent");

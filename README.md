@@ -10,7 +10,22 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Set up environment variables
+
+   Create a `.env` file in the root directory by copying the sample file:
+   
+   ```bash
+   cp env.sample .env
+   ```
+   
+   Then update the `.env` file with your actual values:
+   - `EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN`: Your Chatwoot website token
+   - `EXPO_PUBLIC_CHATWOOT_USER_ID`: Your Chatwoot user ID
+   - `EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN`: Your access token
+   - `EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID`: Your customer connection ID
+   - `EXPO_PUBLIC_CHATWOOT_BASE_URL`: Your Chatwoot base URL (default: https://chat.footgolflegends.com)
+
+3. Start the app
 
    ```bash
    npx expo start
