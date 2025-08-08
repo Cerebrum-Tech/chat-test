@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Linking, StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { ChatWebViewProps, WebViewMessage } from '../types/webview';
 
@@ -97,6 +97,37 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     } catch (error) {
       console.error('❌ Error parsing WebView message:', error);
       console.error('Raw message:', event.nativeEvent.data);
+    }
+  };
+
+  // Intercept navigations to open external links in the system browser
+  const handleShouldStartLoadWithRequest = (request: any) => {
+    try {
+      const url: string = request?.url || '';
+      if (!url) return true;
+
+      // Always allow internal navigations and non-http(s) schemes needed by the widget
+      const isHttp = /^https?:\/\//i.test(url);
+      const isDataOrAbout = /^(about:blank|data:|blob:)/i.test(url);
+      if (!isHttp || isDataOrAbout) {
+        return true;
+      }
+
+      // Compare host with the chat base URL host to detect external links
+      const extractHost = (u: string) => u.replace(/^https?:\/\//i, '').split('/')[0];
+      const baseHost = extractHost(baseUrl);
+      const urlHost = extractHost(url);
+      const isSameHost = baseHost === urlHost;
+
+      if (!isSameHost) {
+        Linking.openURL(url).catch(err => console.error('Failed to open URL externally:', err));
+        return false; // Prevent WebView from loading external URL
+      }
+
+      return true;
+    } catch (e) {
+      console.warn('onShouldStartLoadWithRequest guard failed, allowing navigation', e);
+      return true;
     }
   };
 
@@ -524,6 +555,8 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         bounces={false}
         scrollEnabled={true}
         style={styles.webview}
+        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
+        setSupportMultipleWindows={false}
         // Additional properties from the example
         thirdPartyCookiesEnabled={true}
         userAgent="YourApp/1.0 (ReactNative)"
