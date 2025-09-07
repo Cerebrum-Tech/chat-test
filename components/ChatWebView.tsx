@@ -1,7 +1,7 @@
-import React, { useRef } from 'react';
-import { Linking, StyleSheet, View } from 'react-native';
-import WebView, { WebViewMessageEvent } from 'react-native-webview';
-import { ChatWebViewProps, WebViewMessage } from '../types/webview';
+import React, { useRef } from "react";
+import { Linking, StyleSheet, View } from "react-native";
+import WebView, { WebViewMessageEvent } from "react-native-webview";
+import { ChatWebViewProps, WebViewMessage } from "../types/webview";
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
   onMessage,
@@ -9,13 +9,16 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
   style
 }) => {
   const webViewRef = useRef<WebView>(null);
-  
+
   // Get environment variables
-  const websiteToken = process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN || '';
-  const userId = process.env.EXPO_PUBLIC_CHATWOOT_USER_ID || '';
-  const accessToken = process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || '';
-  const customerConnectionId = process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || '';
-  const baseUrl = process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL || 'https://chat.footgolflegends.com';
+  const websiteToken = process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN || "";
+  const userId = process.env.EXPO_PUBLIC_CHATWOOT_USER_ID || "";
+  const accessToken = process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || "";
+  const customerConnectionId =
+    process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || "";
+  const baseUrl =
+    process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL ||
+    "https://chat.footgolflegends.com";
 
   // Inject ReactNativeWebView before content loads (for external URLs)
   const injectedJavaScriptBeforeContentLoaded = `
@@ -50,9 +53,9 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     try {
       const message: WebViewMessage = JSON.parse(event.nativeEvent.data);
-      
+
       // Log all incoming messages
-      console.log('📥 WebView Message Received:', {
+      console.log("📥 WebView Message Received:", {
         timestamp: new Date().toISOString(),
         process: message.Process,
         data: message.Data
@@ -60,50 +63,55 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 
       // Handle specific message types
       switch (message.Process) {
-        case 'GotoPage':
-          console.log('🚀 Navigation Request:', message.Data);
+        case "GotoPage":
+          console.log("🚀 Navigation Request:", message.Data);
           if (onNavigationRequest) {
             onNavigationRequest(message.Data.PageName, message.Data.CaseId);
           }
           break;
-        
-        case 'ChatMessage':
-          console.log('💬 Chat Message:', message.Data);
+
+        case "ChatMessage":
+          console.log("💬 Chat Message:", message.Data);
           // Check if chat message contains navigation action
           const chatMessage = message.Data?.message;
-          if (chatMessage?.content_attributes?.navigation_action && onNavigationRequest) {
-            console.log('🧭 Navigation found in ChatMessage');
+          if (
+            chatMessage?.content_attributes?.navigation_action &&
+            onNavigationRequest
+          ) {
+            console.log("🧭 Navigation found in ChatMessage");
             const navData = chatMessage.content_attributes.navigation_data;
-            if (navData?.process === 'GotoPage') {
+            if (navData?.process === "GotoPage") {
               const { page_name, case_id } = navData.data;
               // Convert snake_case to PascalCase for screen names
-              const screenName = page_name.split('_').map((word: string) => 
-                word.charAt(0).toUpperCase() + word.slice(1)
-              ).join('');
-              onNavigationRequest(screenName.replace('Screen', ''), case_id);
+              const screenName = page_name
+                .split("_")
+                .map(
+                  (word: string) => word.charAt(0).toUpperCase() + word.slice(1)
+                )
+                .join("");
+              onNavigationRequest(screenName.replace("Screen", ""), case_id);
             }
           }
           break;
-        
+
         default:
-          console.log('❓ Unknown message type:', message.Process);
+          console.log("❓ Unknown message type:", message.Process);
       }
 
       // Call the general message handler if provided
       if (onMessage) {
         onMessage(message);
       }
-
     } catch (error) {
-      console.error('❌ Error parsing WebView message:', error);
-      console.error('Raw message:', event.nativeEvent.data);
+      console.error("❌ Error parsing WebView message:", error);
+      console.error("Raw message:", event.nativeEvent.data);
     }
   };
 
   // Intercept navigations to open external links in the system browser
   const handleShouldStartLoadWithRequest = (request: any) => {
     try {
-      const url: string = request?.url || '';
+      const url: string = request?.url || "";
       if (!url) return true;
 
       // Always allow internal navigations and non-http(s) schemes needed by the widget
@@ -114,19 +122,25 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       }
 
       // Compare host with the chat base URL host to detect external links
-      const extractHost = (u: string) => u.replace(/^https?:\/\//i, '').split('/')[0];
+      const extractHost = (u: string) =>
+        u.replace(/^https?:\/\//i, "").split("/")[0];
       const baseHost = extractHost(baseUrl);
       const urlHost = extractHost(url);
       const isSameHost = baseHost === urlHost;
 
       if (!isSameHost) {
-        Linking.openURL(url).catch(err => console.error('Failed to open URL externally:', err));
+        Linking.openURL(url).catch((err) =>
+          console.error("Failed to open URL externally:", err)
+        );
         return false; // Prevent WebView from loading external URL
       }
 
       return true;
     } catch (e) {
-      console.warn('onShouldStartLoadWithRequest guard failed, allowing navigation', e);
+      console.warn(
+        "onShouldStartLoadWithRequest guard failed, allowing navigation",
+        e
+      );
       return true;
     }
   };
@@ -547,7 +561,9 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         ref={webViewRef}
         source={{ html: htmlContent }}
         onMessage={handleWebViewMessage}
-        injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
+        injectedJavaScriptBeforeContentLoaded={
+          injectedJavaScriptBeforeContentLoaded
+        }
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
@@ -561,19 +577,22 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         thirdPartyCookiesEnabled={true}
         userAgent="YourApp/1.0 (ReactNative)"
         mixedContentMode="compatibility"
+        // Cache control for fresh loading
+        cacheEnabled={false}
+        incognito={true}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.error('WebView error:', nativeEvent);
+          console.error("WebView error:", nativeEvent);
         }}
         onHttpError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
-          console.error('WebView HTTP error:', nativeEvent);
+          console.error("WebView HTTP error:", nativeEvent);
         }}
         onLoadStart={() => {
-          console.log('🔄 WebView loading started');
+          console.log("🔄 WebView loading started");
         }}
         onLoadEnd={() => {
-          console.log('✅ WebView loading completed');
+          console.log("✅ WebView loading completed");
         }}
       />
     </View>
@@ -583,10 +602,10 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#141414', // Netflix dark background
+    backgroundColor: "#141414" // Netflix dark background
   },
   webview: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-}); 
+    backgroundColor: "transparent"
+  }
+});
