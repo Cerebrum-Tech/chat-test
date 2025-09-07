@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { Linking, Platform, StyleSheet, View } from "react-native";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
 import { ChatWebViewProps, WebViewMessage } from "../types/webview";
 
@@ -20,8 +20,44 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL ||
     "https://chat.footgolflegends.com";
 
+  console.log("🔧 Platform:", Platform.OS, Platform.Version);
+
   // Inject ReactNativeWebView before content loads (for external URLs)
   const injectedJavaScriptBeforeContentLoaded = `
+    console.log('📱 Platform detected: ${Platform.OS}');
+    
+    // Android-specific WebView initialization
+    ${
+      Platform.OS === "android"
+        ? `
+      // Android WebView needs extra time for initialization
+      console.log('🤖 Android WebView initialization');
+      
+      // Override console methods for Android
+      const originalConsole = {
+        log: console.log,
+        error: console.error,
+        warn: console.warn
+      };
+      
+      console.log = function(...args) {
+        originalConsole.log.apply(console, args);
+        try {
+          if (window.ReactNativeWebView) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'console',
+              level: 'log',
+              message: args.join(' ')
+            }));
+          }
+        } catch (e) {
+          // Ignore postMessage errors during initialization
+        }
+      };
+    `
+        : ""
+    }
+    
     // Ensure ReactNativeWebView is available globally with proper fallback
     if (!window.ReactNativeWebView) {
       window.ReactNativeWebView = {
@@ -39,10 +75,16 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         console.log('ReactNativeWebView is ready after', checkCount, 'checks');
         return;
       }
-      if (checkCount < 50) { // Try for up to 5 seconds (50 * 100ms)
-        setTimeout(checkForWebView, 100);
+      if (checkCount < ${
+        Platform.OS === "android" ? "100" : "50"
+      }) { // Android needs more time
+        setTimeout(checkForWebView, ${
+          Platform.OS === "android" ? "200" : "100"
+        });
       } else {
-        console.error('ReactNativeWebView failed to initialize after 5 seconds');
+        console.error('ReactNativeWebView failed to initialize after ${
+          Platform.OS === "android" ? "20" : "5"
+        } seconds');
       }
     };
     
@@ -204,8 +246,94 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       </div>
 
       <script>
+        console.log('🚀 Starting WebView initialization...');
+        console.log('Platform: ${Platform.OS}');
+        
+        // Android-specific initialization
+        ${
+          Platform.OS === "android"
+            ? `
+        console.log('🤖 Applying Android-specific fixes...');
+        
+        // Android WebView sometimes has issues with fetch and XMLHttpRequest
+        // Override fetch for better compatibility
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options) {
+          console.log('📡 Fetch request:', url);
+          return originalFetch.apply(this, arguments)
+            .then(response => {
+              console.log('📡 Fetch response:', response.status, response.statusText);
+              return response;
+            })
+            .catch(error => {
+              console.error('📡 Fetch error:', error);
+              throw error;
+            });
+        };
+        
+        // Android WebView localStorage issues workaround
+        try {
+          localStorage.setItem('test', 'test');
+          localStorage.removeItem('test');
+          console.log('✅ localStorage working');
+        } catch (e) {
+          console.warn('⚠️ localStorage not available, using memory storage');
+          window.localStorage = {
+            data: {},
+            setItem: function(key, value) { this.data[key] = value; },
+            getItem: function(key) { return this.data[key] || null; },
+            removeItem: function(key) { delete this.data[key]; },
+            clear: function() { this.data = {}; }
+          };
+        }
+        
+        // Android WebView cookie access workaround
+        try {
+          // Test if we can access document.cookie
+          var testCookie = document.cookie;
+          console.log('✅ Cookie access working');
+        } catch (e) {
+          console.warn('⚠️ Cookie access denied, implementing workaround');
+          
+          // Override document.cookie for Android WebView
+          Object.defineProperty(document, 'cookie', {
+            get: function() {
+              console.log('📋 Cookie get intercepted');
+              return window._mockCookies || '';
+            },
+            set: function(value) {
+              console.log('📋 Cookie set intercepted:', value);
+              if (!window._mockCookies) window._mockCookies = '';
+              
+              // Simple cookie parsing and storage
+              var cookieParts = value.split(';')[0].split('=');
+              var cookieName = cookieParts[0].trim();
+              var cookieValue = cookieParts[1] || '';
+              
+              // Store in memory
+              if (!window._cookieStorage) window._cookieStorage = {};
+              window._cookieStorage[cookieName] = cookieValue;
+              
+              // Update mock cookies string
+              var cookieStrings = [];
+              for (var key in window._cookieStorage) {
+                cookieStrings.push(key + '=' + window._cookieStorage[key]);
+              }
+              window._mockCookies = cookieStrings.join('; ');
+              
+              return value;
+            },
+            configurable: true
+          });
+        }
+        `
+            : ""
+        }
+        
         // Global error handler for catching ReactNativeWebView issues
         window.addEventListener('error', function(event) {
+          console.error('💥 Global error:', event.error);
+          
           if (event.error && event.error.message && 
               (event.error.message.includes('ReactNativeWebView') || 
                event.error.message.includes('postMessage'))) {
@@ -313,16 +441,68 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         (function(d, t) {
           var BASE_URL = "${baseUrl}";
           var g = d.createElement(t), s = d.getElementsByTagName(t)[0];
-          g.src = BASE_URL + "/packs/js/sdk.js/?rn_test=true";
+          
+          console.log('📦 Loading Chatwoot SDK from:', BASE_URL + "/packs/js/sdk.js");
+          
+          g.src = BASE_URL + "/packs/js/sdk.js/?rn_test=true&platform=${
+            Platform.OS
+          }&t=" + Date.now();
           g.async = true;
           g.defer = true;
-          s.parentNode.insertBefore(g, s);
+          
+          // Android-specific loading timeout
+          ${
+            Platform.OS === "android"
+              ? `
+          var sdkTimeout = setTimeout(function() {
+            console.error('❌ Chatwoot SDK failed to load on Android within 10 seconds');
+            safePostMessage({
+              Process: 'Error',
+              Data: {
+                error: 'Chatwoot SDK load timeout on Android',
+                timestamp: new Date().toISOString()
+              }
+            });
+          }, 10000);
+          `
+              : ""
+          }
+          
           g.onload = function() {
-            window.chatwootSDK.run({
-              websiteToken: "${websiteToken}",
-              baseUrl: BASE_URL
+            ${Platform.OS === "android" ? "clearTimeout(sdkTimeout);" : ""}
+            console.log('✅ Chatwoot SDK loaded successfully');
+            
+            try {
+              window.chatwootSDK.run({
+                websiteToken: "${websiteToken}",
+                baseUrl: BASE_URL
+              });
+              console.log('🚀 Chatwoot SDK initialized');
+            } catch (error) {
+              console.error('❌ Chatwoot SDK initialization failed:', error);
+              safePostMessage({
+                Process: 'Error',
+                Data: {
+                  error: 'Chatwoot SDK initialization failed: ' + error.message,
+                  timestamp: new Date().toISOString()
+                }
+              });
+            }
+          };
+          
+          g.onerror = function(error) {
+            ${Platform.OS === "android" ? "clearTimeout(sdkTimeout);" : ""}
+            console.error('❌ Failed to load Chatwoot SDK:', error);
+            safePostMessage({
+              Process: 'Error',
+              Data: {
+                error: 'Failed to load Chatwoot SDK',
+                timestamp: new Date().toISOString()
+              }
             });
           };
+          
+          s.parentNode.insertBefore(g, s);
         })(document, "script");
       </script>
       
@@ -566,6 +746,8 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         }
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        allowsInlineMediaPlayback={true}
+        mediaPlaybackRequiresUserAction={false}
         startInLoadingState={true}
         scalesPageToFit={true}
         bounces={false}
@@ -575,8 +757,18 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         setSupportMultipleWindows={false}
         // Additional properties from the example
         thirdPartyCookiesEnabled={true}
-        userAgent="YourApp/1.0 (ReactNative)"
+        sharedCookiesEnabled={true}
+        userAgent={`YourApp/1.0 (ReactNative; ${Platform.OS} ${Platform.Version})`}
         mixedContentMode="compatibility"
+        // Android-specific properties
+        {...(Platform.OS === "android" && {
+          androidHardwareAccelerationDisabled: false,
+          androidLayerType: "hardware",
+          overScrollMode: "never",
+          nestedScrollEnabled: true,
+          allowsFullscreenVideo: true,
+          allowsProtectedMedia: true
+        })}
         // Cache control for fresh loading
         cacheEnabled={false}
         incognito={true}
