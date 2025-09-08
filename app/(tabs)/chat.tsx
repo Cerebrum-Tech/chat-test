@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   SafeAreaView,
@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { ChatWebView } from "../../components/ChatWebView";
 import { ConfirmationModal } from "../../components/ConfirmationModal";
+import { CustomerIdModal } from "../../components/CustomerIdModal";
+import { AuthService } from "../../services/AuthService";
 import { WebViewMessageHandler } from "../../services/WebViewMessageHandler";
 import { WebViewMessage } from "../../types/webview";
 
@@ -17,11 +19,63 @@ export default function ChatScreen() {
   const [webViewKey, setWebViewKey] = useState(0);
 
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showCustomerIdModal, setShowCustomerIdModal] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<{
     pageName: string;
     caseId: string;
   } | null>(null);
+
+  // Dynamic auth states
+  const [currentCustomerId, setCurrentCustomerId] = useState<string>("");
+  const [currentAccessToken, setCurrentAccessToken] = useState<string>("");
+  const [isLoadingAuth, setIsLoadingAuth] = useState(true);
+
   const messageHandler = useRef(new WebViewMessageHandler()).current;
+
+  const loadInitialAuth = useCallback(async () => {
+    setIsLoadingAuth(true);
+    try {
+      // Get default customer ID from env or use fallback
+      const defaultCustomerId =
+        process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID ||
+        "01391bfb-e4cc-eb11-9c21-005056b20185";
+
+      console.log("🔄 Loading initial auth for customer:", defaultCustomerId);
+
+      // Get access token for default customer
+      const accessToken = await AuthService.getAccessToken(defaultCustomerId);
+
+      setCurrentCustomerId(defaultCustomerId);
+      setCurrentAccessToken(accessToken);
+
+      console.log("✅ Initial auth loaded successfully");
+    } catch (error) {
+      console.error("❌ Failed to load initial auth:", error);
+      Alert.alert(
+        "Authentication Error",
+        `Failed to get access token:\n${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        [{ text: "Retry", onPress: loadInitialAuth }, { text: "Cancel" }]
+      );
+    } finally {
+      setIsLoadingAuth(false);
+    }
+  }, []);
+
+  // Load initial auth data on component mount
+  useEffect(() => {
+    loadInitialAuth();
+  }, [loadInitialAuth]);
+
+  const handleCustomerIdChanged = (customerId: string, accessToken: string) => {
+    console.log("🔄 Customer ID changed:", customerId);
+    setCurrentCustomerId(customerId);
+    setCurrentAccessToken(accessToken);
+
+    // Reset WebView to use new auth
+    resetWebView();
+  };
 
   const handleWebViewMessage = (message: WebViewMessage) => {
     messageHandler.handleMessage(message, {
@@ -123,10 +177,18 @@ export default function ChatScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>chatbot react test</Text>
-        <Text style={styles.subtitle}>
-          WebView integration with message logging
-        </Text>
+        {isLoadingAuth ? (
+          <Text style={styles.authStatus}>🔄 Loading authentication...</Text>
+        ) : (
+          <View style={styles.authInfo}>
+            <Text style={styles.authLabel}>Customer ID:</Text>
+            <Text style={styles.authValue}>{currentCustomerId}</Text>
+            <Text style={styles.authLabel}>Token:</Text>
+            <Text style={styles.authValue}>
+              {currentAccessToken ? "✅ Active" : "❌ Missing"}
+            </Text>
+          </View>
+        )}
       </View>
 
       <View style={styles.controls}>
@@ -159,14 +221,23 @@ export default function ChatScreen() {
         >
           <Text style={styles.buttonText}>🔄 Reset</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.button, styles.customerButton]}
+          onPress={() => setShowCustomerIdModal(true)}
+        >
+          <Text style={styles.buttonText}>👤 Customer</Text>
+        </TouchableOpacity>
       </View>
 
-      {isVisible && (
+      {isVisible && !isLoadingAuth && (
         <View style={styles.webviewContainer}>
           <ChatWebView
             key={webViewKey}
             onMessage={handleWebViewMessage}
             style={styles.webview}
+            customerId={currentCustomerId}
+            accessToken={currentAccessToken}
           />
         </View>
       )}
@@ -183,6 +254,12 @@ export default function ChatScreen() {
         onCancel={handleCancelNavigation}
         confirmText="Navigate"
         cancelText="Cancel"
+      />
+
+      <CustomerIdModal
+        visible={showCustomerIdModal}
+        onClose={() => setShowCustomerIdModal(false)}
+        onCustomerIdChanged={handleCustomerIdChanged}
       />
     </SafeAreaView>
   );
@@ -236,6 +313,9 @@ const styles = StyleSheet.create({
   warningButton: {
     backgroundColor: "#ff9800"
   },
+  customerButton: {
+    backgroundColor: "#9c27b0"
+  },
   buttonText: {
     color: "#fff",
     fontSize: 11,
@@ -248,5 +328,29 @@ const styles = StyleSheet.create({
   },
   webview: {
     flex: 1
+  },
+
+  authStatus: {
+    fontSize: 12,
+    color: "#ff9800",
+    textAlign: "center",
+    marginTop: 8
+  },
+  authInfo: {
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: "#222",
+    borderRadius: 4
+  },
+  authLabel: {
+    fontSize: 10,
+    color: "#999",
+    marginBottom: 2
+  },
+  authValue: {
+    fontSize: 11,
+    color: "#fff",
+    fontFamily: "monospace",
+    marginBottom: 4
   }
 });

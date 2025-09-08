@@ -4,7 +4,7 @@ export interface WebViewMessage {
 }
 
 export interface GotoPageMessage extends WebViewMessage {
-  Process: 'GotoPage';
+  Process: "GotoPage";
   Data: {
     PageName: string;
     CaseId: string;
@@ -12,7 +12,7 @@ export interface GotoPageMessage extends WebViewMessage {
 }
 
 export interface WebViewMessageHandler {
-  onGotoPage: (data: GotoPageMessage['Data']) => void;
+  onGotoPage: (data: GotoPageMessage["Data"]) => void;
   onUnknownMessage: (message: WebViewMessage) => void;
 }
 
@@ -20,4 +20,6 @@ export interface ChatWebViewProps {
   onMessage?: (message: WebViewMessage) => void;
   onNavigationRequest?: (pageName: string, caseId: string) => void;
   style?: any;
-} 
+  customerId?: string;
+  accessToken?: string;
+}

@@ -6,21 +6,32 @@ import { ChatWebViewProps, WebViewMessage } from "../types/webview";
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
   onMessage,
   onNavigationRequest,
-  style
+  style,
+  customerId,
+  accessToken
 }) => {
   const webViewRef = useRef<WebView>(null);
 
-  // Get environment variables
+  // Get environment variables (fallbacks for missing props)
   const websiteToken = process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN || "";
   const userId = process.env.EXPO_PUBLIC_CHATWOOT_USER_ID || "";
-  const accessToken = process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || "";
-  const customerConnectionId =
-    process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || "";
+
+  // Use dynamic auth values or fallback to env
+  const dynamicAccessToken =
+    accessToken || process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || "";
+  const dynamicCustomerId =
+    customerId || process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || "";
+
   const baseUrl =
     process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL ||
     "https://chat.footgolflegends.com";
 
   console.log("🔧 Platform:", Platform.OS, Platform.Version);
+  console.log("🔑 Dynamic Auth:", {
+    customerId: dynamicCustomerId ? "✅ Set" : "❌ Missing",
+    accessToken: dynamicAccessToken ? "✅ Set" : "❌ Missing",
+    source: customerId ? "Dynamic" : "Environment"
+  });
 
   // Inject ReactNativeWebView before content loads (for external URLs)
   const injectedJavaScriptBeforeContentLoaded = `
@@ -517,11 +528,18 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           });
           
           window.$chatwoot.setCustomAttributes({
-            access_token: "${accessToken}",
-            customer_connection_id: "${customerConnectionId}",
+            access_token: "${dynamicAccessToken}",
+            customer_connection_id: "${dynamicCustomerId}",
+            auth_source: "${customerId ? "dynamic" : "environment"}",
+            timestamp: Date.now()
           });
           
-          console.log("Chatwoot: visitor identified & custom attributes sent");
+          console.log("✅ Chatwoot: visitor identified & custom attributes sent");
+          console.log("🔑 Auth details:", {
+            customerId: "${dynamicCustomerId}",
+            hasAccessToken: !!"${dynamicAccessToken}",
+            authSource: "${customerId ? "dynamic" : "environment"}"
+          });
           
           setTimeout(() => {
             window.$chatwoot.toggle('open');
