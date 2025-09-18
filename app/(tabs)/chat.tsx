@@ -35,9 +35,11 @@ export default function ChatScreen() {
   const loadInitialAuth = useCallback(async () => {
     setIsLoadingAuth(true);
     try {
-      // Get default customer ID from env or use fallback
+      // Get default customer ID from env or app.json extra or use fallback
+      const expoConfig = Constants.expoConfig?.extra || {};
       const defaultCustomerId =
-        process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID ||
+        process.env.EXPO_PUBLIC_CHATWOOT_USER_ID ||
+        expoConfig.EXPO_PUBLIC_CHATWOOT_USER_ID ||
         "01391bfb-e4cc-eb11-9c21-005056b20185";
 
       console.log("🔄 Loading initial auth for customer:", defaultCustomerId);
@@ -143,20 +145,27 @@ export default function ChatScreen() {
   const resetWebView = useCallback(() => {
     console.log("🔄 Resetting WebView from chat screen...");
 
-    // First hide the WebView
+    // First hide the WebView completely
     setIsVisible(false);
 
     // Clear message history
     messageHandler.clearMessageHistory();
 
-    // Update key to force complete re-render
-    setWebViewKey((prev) => prev + 1);
-
-    // Show WebView again after a short delay
+    // Force garbage collection by setting a delay
     setTimeout(() => {
-      setIsVisible(true);
-      console.log("✅ WebView reset completed");
-    }, 100);
+      // Update key to force complete re-render and destroy old WebView
+      setWebViewKey((prev) => {
+        const newKey = prev + 1;
+        console.log(`🔑 WebView key updated: ${prev} → ${newKey}`);
+        return newKey;
+      });
+
+      // Additional delay to ensure old WebView is fully destroyed
+      setTimeout(() => {
+        setIsVisible(true);
+        console.log("✅ WebView reset completed with fresh instance");
+      }, 300);
+    }, 500); // First delay to ensure old WebView cleanup
   }, [messageHandler]);
 
   const handleWebViewError = useCallback(

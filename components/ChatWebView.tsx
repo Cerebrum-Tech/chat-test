@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import React, { useRef } from "react";
 import { Linking, Platform, StyleSheet, View } from "react-native";
 import WebView, { WebViewMessageEvent } from "react-native-webview";
@@ -12,18 +13,52 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 }) => {
   const webViewRef = useRef<WebView>(null);
 
-  // Get environment variables (fallbacks for missing props)
-  const websiteToken = process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN || "";
-  const userId = process.env.EXPO_PUBLIC_CHATWOOT_USER_ID || "";
+  // Clear WebView cache on component mount
+  React.useEffect(() => {
+    console.log("🧹 ChatWebView mounted, clearing any existing cache...");
+
+    // Clear WebView cache if available
+    const webView = webViewRef.current;
+    if (webView && typeof webView.clearCache === "function") {
+      webView.clearCache(true);
+      console.log("✅ WebView cache cleared");
+    }
+
+    return () => {
+      console.log("🗑️ ChatWebView unmounting...");
+      // Additional cleanup on unmount - use captured ref
+      if (webView && typeof webView.clearCache === "function") {
+        webView.clearCache(true);
+      }
+    };
+  }, []);
+
+  // Get environment variables from Constants.expoConfig.extra (fallbacks for missing props)
+  const expoConfig = Constants.expoConfig?.extra || {};
+  const websiteToken =
+    process.env.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN ||
+    expoConfig.EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN ||
+    "";
+  const userId =
+    process.env.EXPO_PUBLIC_CHATWOOT_USER_ID ||
+    expoConfig.EXPO_PUBLIC_CHATWOOT_USER_ID ||
+    "";
 
   // Use dynamic auth values or fallback to env
   const dynamicAccessToken =
-    accessToken || process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN || "";
+    accessToken ||
+    process.env.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN ||
+    expoConfig.EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN ||
+    "";
   const dynamicCustomerId =
-    customerId || process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID || "";
+    customerId ||
+    process.env.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID ||
+    expoConfig.EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID ||
+    "";
 
   const baseUrl =
     process.env.EXPO_PUBLIC_CHATWOOT_BASE_URL ||
+    expoConfig.EXPO_PUBLIC_CHATWOOT_BASE_URL ||
     "https://chat.footgolflegends.com";
 
   console.log("🔧 Platform:", Platform.OS, Platform.Version);
@@ -198,14 +233,22 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     }
   };
 
+  // Generate cache buster for fresh load
+  const cacheBuster = Date.now();
+  const sessionId = `${cacheBuster}-${Math.random().toString(36).substr(2, 9)}`;
+
   // HTML content with the Chatwoot script
   const htmlContent = `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-      <title>Chatwoot Widget</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+      <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+      <meta http-equiv="Pragma" content="no-cache">
+      <meta http-equiv="Expires" content="0">
+      <meta name="session-id" content="${sessionId}">
+      <title>Chatwoot Widget - ${sessionId}</title>
       <style>
         body {
           margin: 0;
@@ -259,12 +302,59 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       <script>
         console.log('🚀 Starting WebView initialization...');
         console.log('Platform: ${Platform.OS}');
+        console.log('Session ID: ${sessionId}');
+        
+        // Store session info globally for debugging
+        window.sessionInfo = {
+          sessionId: '${sessionId}',
+          timestamp: ${cacheBuster},
+          platform: '${Platform.OS}'
+        };
+        
+        // Force cache invalidation
+        window.name = 'chatwoot-session-${sessionId}';
+        
+        // Clear any existing storage with old session data
+        try {
+          const currentSession = localStorage.getItem('chatwoot_session');
+          if (currentSession && currentSession !== '${sessionId}') {
+            console.log('🔄 New session detected, clearing old data...');
+            localStorage.clear();
+            sessionStorage.clear();
+          }
+          localStorage.setItem('chatwoot_session', '${sessionId}');
+        } catch (e) {
+          console.log('Storage cleanup error:', e.message);
+        }
         
         // Android-specific initialization
         ${
           Platform.OS === "android"
             ? `
         console.log('🤖 Applying Android-specific fixes...');
+        
+        // Prevent input-related reloads on Android
+        window.addEventListener('resize', function(e) {
+          console.log('📱 Window resize detected, preventing reload');
+          e.preventDefault();
+          e.stopPropagation();
+        });
+        
+        // Stabilize input fields
+        document.addEventListener('DOMContentLoaded', function() {
+          // Prevent zoom on input focus
+          const inputs = document.querySelectorAll('input, textarea');
+          inputs.forEach(input => {
+            input.addEventListener('focus', function(e) {
+              console.log('🎯 Input focused, stabilizing...');
+              // Prevent any viewport changes
+              const viewport = document.querySelector('meta[name=viewport]');
+              if (viewport) {
+                viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              }
+            });
+          });
+        });
         
         // Android WebView sometimes has issues with fetch and XMLHttpRequest
         // Override fetch for better compatibility
@@ -457,7 +547,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           
           g.src = BASE_URL + "/packs/js/sdk.js/?rn_test=true&platform=${
             Platform.OS
-          }&t=" + Date.now();
+          }&session=${sessionId}&t=" + Date.now();
           g.async = true;
           g.defer = true;
           
@@ -547,6 +637,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
             
             setTimeout(() => {
               hideBubblePermanently();
+              stabilizeInputFields();  // ✅ Input field stabilization
               setTimeout(() => {
                 overrideBackButton();
                 watchForBackButton(); 
@@ -584,6 +675,78 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
             });
             
             console.log("Chatwoot: bubble hidden permanently");
+          }
+
+          function stabilizeInputFields() {
+            console.log('🎯 Stabilizing input fields...');
+            
+            // Wait for Chatwoot widget to be fully loaded
+            setTimeout(() => {
+              const allInputs = document.querySelectorAll('input, textarea');
+              console.log(\`Found \${allInputs.length} input fields\`);
+              
+              allInputs.forEach((input, index) => {
+                console.log(\`Stabilizing input \${index}:\`, {
+                  type: input.type,
+                  placeholder: input.placeholder,
+                  className: input.className
+                });
+                
+                // Prevent zoom on focus
+                input.addEventListener('focus', function(e) {
+                  console.log(\`📝 Input \${index} focused\`);
+                  
+                  // Force viewport stability
+                  const viewport = document.querySelector('meta[name=viewport]');
+                  if (viewport) {
+                    viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover');
+                  }
+                  
+                  // Prevent any page jumps
+                  document.body.style.position = 'fixed';
+                  document.body.style.width = '100%';
+                  
+                  setTimeout(() => {
+                    document.body.style.position = '';
+                    document.body.style.width = '';
+                  }, 100);
+                });
+                
+                input.addEventListener('blur', function(e) {
+                  console.log(\`📝 Input \${index} blurred\`);
+                });
+                
+                // Prevent input from causing page reload
+                input.addEventListener('input', function(e) {
+                  // Just log, don't prevent default
+                  console.log(\`📝 Input \${index} changed:, e.target.value.length, 'chars\`);
+                });
+              });
+              
+              // Watch for new input fields (dynamic content)
+              const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                  if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach(function(node) {
+                      if (node.nodeType === 1) {
+                        const newInputs = node.querySelectorAll ? node.querySelectorAll('input, textarea') : [];
+                        if (newInputs.length > 0 || (node.tagName && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA'))) {
+                          console.log('🆕 New input fields detected, re-stabilizing...');
+                          setTimeout(stabilizeInputFields, 100);
+                        }
+                      }
+                    });
+                  }
+                });
+              });
+              
+              observer.observe(document.body, {
+                childList: true,
+                subtree: true
+              });
+              
+              console.log('✅ Input field stabilization completed');
+            }, 1000);
           }
     
           function overrideBackButton() {
@@ -757,7 +920,11 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     <View style={[styles.container, style]}>
       <WebView
         ref={webViewRef}
-        source={{ html: htmlContent }}
+        source={{
+          html: htmlContent
+          // Note: baseUrl removed as it was causing warnings with data: URLs
+          // Cache busting is handled through sessionId in HTML and meta tags
+        }}
         onMessage={handleWebViewMessage}
         injectedJavaScriptBeforeContentLoaded={
           injectedJavaScriptBeforeContentLoaded
@@ -767,9 +934,11 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         allowsInlineMediaPlayback={true}
         mediaPlaybackRequiresUserAction={false}
         startInLoadingState={true}
-        scalesPageToFit={true}
+        scalesPageToFit={false} // ❌ Bu input reload'a neden oluyor
         bounces={false}
         scrollEnabled={true}
+        keyboardDisplayRequiresUserAction={false} // ✅ Keyboard handling
+        hideKeyboardAccessoryView={true} // ✅ iOS keyboard accessory gizle
         style={styles.webview}
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         setSupportMultipleWindows={false}
@@ -785,11 +954,17 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
           overScrollMode: "never",
           nestedScrollEnabled: true,
           allowsFullscreenVideo: true,
-          allowsProtectedMedia: true
+          allowsProtectedMedia: true,
+          // Keyboard handling for Android
+          automaticallyAdjustContentInsets: false,
+          contentInset: { top: 0, left: 0, bottom: 0, right: 0 }
         })}
-        // Cache control for fresh loading
+        // Cache control for fresh loading - AGGRESSIVE
         cacheEnabled={false}
         incognito={true}
+        {...(Platform.OS === "android" && {
+          cacheMode: "LOAD_NO_CACHE" // Android: Force no cache
+        })}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
           console.error("WebView error:", nativeEvent);
