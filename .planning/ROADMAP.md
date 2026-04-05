@@ -27,7 +27,11 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `window.__CHAT_BACKEND_AUTH__` (Ceremeet token) and `window.__CHAT_BACKEND_CONTEXT__` (userId/language) are injected before page load via injectedJavaScriptBeforeContentLoaded
   4. GotoPage navigation messages from the WebFrontend are still handled by the existing ReactNativeWebView.postMessage bridge
   5. External links continue opening in the system browser
-**Plans**: TBD
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — Replace env vars, trim types, rewrite ChatWebView.tsx for URL loading with auth injection
+- [ ] 01-02-PLAN.md — Simplify WebViewMessageHandler service and chat.tsx screen
 
 ### Phase 2: Verification
 **Goal**: The migrated codebase compiles cleanly and contains no traces of the old Chatwoot integration
@@ -45,5 +49,5 @@ Phases execute in numeric order: 1 → 2
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Migration | 0/? | Not started | - |
+| 1. Migration | 0/2 | Planning complete | - |
 | 2. Verification | 0/? | Not started | - |
