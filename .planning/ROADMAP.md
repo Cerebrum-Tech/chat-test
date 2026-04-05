@@ -30,8 +30,8 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Replace env vars, trim types, rewrite ChatWebView.tsx for URL loading with auth injection
-- [ ] 01-02-PLAN.md — Simplify WebViewMessageHandler service and chat.tsx screen
+- [x] 01-01-PLAN.md — Replace env vars, trim types, rewrite ChatWebView.tsx for URL loading with auth injection
+- [x] 01-02-PLAN.md — Simplify WebViewMessageHandler service and chat.tsx screen
 
 ### Phase 2: Verification
 **Goal**: The migrated codebase compiles cleanly and contains no traces of the old Chatwoot integration
