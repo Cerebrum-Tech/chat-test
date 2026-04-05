@@ -33,7 +33,7 @@
 | Feature | Reason |
 |---------|--------|
 | Backend/API changes | Handled by WebFrontend and caicore backend |
-| WebFrontend changes | Separate project (watersbot.footgolflegends.com) |
+| WebFrontend changes | Separate project (watersbot.footgolglegends.com) |
 | New chat features | Migration only, no feature additions |
 | Types/services refactor | Existing interfaces and handlers work as-is |
 
@@ -41,22 +41,22 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENV-01 | — | Pending |
-| ENV-02 | — | Pending |
-| ENV-03 | — | Pending |
-| WEB-01 | — | Pending |
-| WEB-02 | — | Pending |
-| WEB-03 | — | Pending |
-| WEB-04 | — | Pending |
-| WEB-05 | — | Pending |
-| VER-01 | — | Pending |
-| VER-02 | — | Pending |
+| ENV-01 | Phase 1 | Pending |
+| ENV-02 | Phase 1 | Pending |
+| ENV-03 | Phase 1 | Pending |
+| WEB-01 | Phase 1 | Pending |
+| WEB-02 | Phase 1 | Pending |
+| WEB-03 | Phase 1 | Pending |
+| WEB-04 | Phase 1 | Pending |
+| WEB-05 | Phase 1 | Pending |
+| VER-01 | Phase 2 | Pending |
+| VER-02 | Phase 2 | Pending |
 
 **Coverage:**
 - v1 requirements: 10 total
-- Mapped to phases: 0
-- Unmapped: 10 ⚠️
+- Mapped to phases: 10
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-05*
-*Last updated: 2026-04-05 after initial definition*
+*Last updated: 2026-04-05 after roadmap creation*
