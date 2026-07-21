@@ -42,3 +42,6 @@ app-example
 # Generated native directories
 android/
 ios/
+
+# Local isolated development worktrees
+.worktrees/
