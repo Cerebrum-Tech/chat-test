@@ -66,10 +66,10 @@ External-open failures use fixed warning text and do not expose the requested UR
 
 ## Development stack
 
-The related repository is /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr. Complete-stack, Vite, and live-action smoke require a checkout or deployment of its `feat/native-client-actions` branch at commit `4bb5772` or a merged descendant. In the selected global checkout, verify this before starting services:
+The related repository is /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr. Complete-stack, Vite, and live-action smoke require a checkout or deployment of its `feat/native-client-actions` branch at commit `66c88d5` or a merged descendant. In the selected global checkout, verify this before starting services:
 
 ~~~bash
-git merge-base --is-ancestor 4bb5772 HEAD
+git merge-base --is-ancestor 66c88d5 HEAD
 ~~~
 
 If that command fails, the checkout lacks the native-action producer/dispatcher and is not a valid live-action target. Roll out the global revision first and this native host second.

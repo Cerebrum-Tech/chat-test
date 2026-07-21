@@ -31,7 +31,7 @@
 - DOM storage remains available even though document caching is disabled.
 - `mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}` remain intentional current settings and production-hardening concerns.
 - Auth-enabled Expo hosting requires a separately designed/tested system-browser/deep-link callback that preserves WebView auth-result/session context.
-- Global `feat/native-client-actions` at `4bb5772` or a merged descendant must be deployed before this native host.
+- Global `feat/native-client-actions` at `66c88d5` or a merged descendant must be deployed before this native host.
 
 ## Supported environment
 

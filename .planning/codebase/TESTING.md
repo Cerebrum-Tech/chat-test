@@ -52,10 +52,10 @@ There is no enforced coverage threshold. Passing suites do not replace device-le
 
 Status: not completed in this environment. Automated tests, config, and export do not satisfy this live matrix.
 
-Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `4bb5772` or a merged descendant. Select that checkout and verify it before preparing services:
+Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `66c88d5` or a merged descendant. Select that checkout and verify it before preparing services:
 
 ~~~bash
-git merge-base --is-ancestor 4bb5772 HEAD
+git merge-base --is-ancestor 66c88d5 HEAD
 cp CAICore/.env.example CAICore/.env
 cp WatersMCPServer/.env.example WatersMCPServer/.env
 ~~~

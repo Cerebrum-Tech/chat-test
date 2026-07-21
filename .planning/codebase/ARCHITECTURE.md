@@ -64,7 +64,7 @@ The native script never supplies a token or authentication object. For a future 
 
 ## Cross-repository runtime dependency
 
-Live native actions depend on the producer and dispatcher from global `feat/native-client-actions` commit `4bb5772` or a merged descendant. That global revision must be checked out for complete-stack smoke and deployed before this native host; otherwise REST/SSE can run but no compatible live action is produced for the bridge.
+Live native actions depend on the producer and dispatcher from global `feat/native-client-actions` commit `66c88d5` or a merged descendant. That global revision must be checked out for complete-stack smoke and deployed before this native host; otherwise REST/SSE can run but no compatible live action is produced for the bridge.
 
 ## Navigation flow
 

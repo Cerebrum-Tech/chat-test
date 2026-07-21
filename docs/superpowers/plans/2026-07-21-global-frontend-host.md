@@ -15,7 +15,7 @@
 - Inject optional `window.__CAI_API_BASE_URL__` and `window.__CHAT_BACKEND_CONTEXT__` with `userId`, `userName`, `language`, and `country` before content loads.
 - Do not inject `window.__CHAT_BACKEND_AUTH__`, access tokens, private storage keys, query-string tokens, or token-bearing conversation metadata. The bootstrap allowlist rejects unsupported property names but does not inspect allowed string values for token-like content; callers must keep those values public.
 - The current Erikli global channel has `auth.enabled: false`; smoke is scoped to direct load and conversations REST/SSE without login. If auth is enabled later, the WebFrontend `AuthProvider` remains the only token owner, but Expo hosting is unsupported until a separately designed and tested system-browser/deep-link callback preserves the WebView auth-result/session context.
-- Complete-stack, Vite, and live-action smoke require global `feat/native-client-actions` at `4bb5772` or a merged descendant. Check out or deploy that global revision first, then this native host.
+- Complete-stack, Vite, and live-action smoke require global `feat/native-client-actions` at `66c88d5` or a merged descendant. Check out or deploy that global revision first, then this native host.
 - Accept only lowercase `output_type/process/data.page_name/data.case_id`; deliberately reject all legacy PascalCase fields.
 - Allow only `GotoPage/MainPage -> /main-page`; route immediately with no modal or confirmation.
 - Treat `case_id` as optional. Missing, empty, and whitespace-only values navigate without params; preserve a nonblank supplied value unchanged.
@@ -916,7 +916,7 @@ Expected: Jest passes, TypeScript and lint exit 0, Expo public config parses, An
 
 Status at final branch review: not completed because the required live environment was unavailable. Keep this step pending even after automated verification succeeds.
 
-Use a global checkout/deployment of `feat/native-client-actions` at `4bb5772` or a merged descendant. Run `git merge-base --is-ancestor 4bb5772 HEAD` in that checkout, then start its Docker Compose stack and Vite frontend. Deploy or check out the global producer/dispatcher revision before this native host. Configure a device-reachable `EXPO_PUBLIC_CAI_FRONTEND_URL` on port 5174, leave `EXPO_PUBLIC_CAI_API_BASE_URL` blank for the same-origin proxy, and run `npx expo start --clear` in this repository.
+Use a global checkout/deployment of `feat/native-client-actions` at `66c88d5` or a merged descendant. Run `git merge-base --is-ancestor 66c88d5 HEAD` in that checkout, then start its Docker Compose stack and Vite frontend. Deploy or check out the global producer/dispatcher revision before this native host. Configure a device-reachable `EXPO_PUBLIC_CAI_FRONTEND_URL` on port 5174, leave `EXPO_PUBLIC_CAI_API_BASE_URL` blank for the same-origin proxy, and run `npx expo start --clear` in this repository.
 
 Verify on a device/emulator:
 

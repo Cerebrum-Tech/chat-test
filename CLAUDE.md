@@ -87,7 +87,7 @@ mv "$chat_test_export_dir" /tmp/
 npx expo start --clear
 ~~~
 
-Run npm ci before package checks. Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `4bb5772` or a merged descendant. Run `git merge-base --is-ancestor 4bb5772 HEAD` in that checkout before starting services. Deploy the global revision first and this native host second so the action producer/dispatcher exists before the consumer.
+Run npm ci before package checks. Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `66c88d5` or a merged descendant. Run `git merge-base --is-ancestor 66c88d5 HEAD` in that checkout before starting services. Deploy the global revision first and this native host second so the action producer/dispatcher exists before the consumer.
 
 Before a complete device smoke, copy the verified global checkout's CAICore/.env.example and WatersMCPServer/.env.example to their local .env files. CAICore requires valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values (or a real Key Vault plus local-container Azure credentials). WatersMCPServer requires WATERS_API_URL, WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Never commit populated secret files.
 

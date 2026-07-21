@@ -42,9 +42,9 @@ Mitigation: omit the API override for local device smoke and let Vite's same-ori
 
 ### Live actions require a companion global revision
 
-The native bridge consumes an action that is produced and dispatched only by global `feat/native-client-actions` at `4bb5772` or a merged descendant. A stack on an earlier global revision can pass basic REST/SSE checks while never exercising native navigation.
+The native bridge consumes an action that is produced and dispatched only by global `feat/native-client-actions` at `66c88d5` or a merged descendant. A stack on an earlier global revision can pass basic REST/SSE checks while never exercising native navigation.
 
-Mitigation: run `git merge-base --is-ancestor 4bb5772 HEAD` in the selected global checkout before Compose or Vite smoke. Deploy the global revision first and this native host second.
+Mitigation: run `git merge-base --is-ancestor 66c88d5 HEAD` in the selected global checkout before Compose or Vite smoke. Deploy the global revision first and this native host second.
 
 ## Authentication and cache
 

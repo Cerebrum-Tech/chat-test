@@ -32,7 +32,7 @@ The native host supplies public bootstrap configuration and handles native routi
 - Treat every EXPO_PUBLIC_ value as visible client configuration.
 - Do not add credentials or tokens to the native bootstrap.
 - Treat allowlisting as property-name projection, not content inspection; callers must keep allowed string values public.
-- Use global `feat/native-client-actions` at `4bb5772` or a merged descendant before complete-stack/live-action smoke, and roll out that global revision before this host.
+- Use global `feat/native-client-actions` at `66c88d5` or a merged descendant before complete-stack/live-action smoke, and roll out that global revision before this host.
 - Preserve exact case-sensitive bridge keys and values.
 - Do not persist or replay received bridge actions.
 - Preserve .planning/phases/01-migration as dated historical evidence.

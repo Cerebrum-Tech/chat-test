@@ -60,4 +60,4 @@ npm run lint
 
 ## Related global stack
 
-The global repository uses a React Vite WebFrontend, FastAPI CAICore backend, conversations REST/SSE, Cosmos persistence, a CRM tool service, and Docker Compose for local services. The current Erikli channel has `auth.enabled: false`. Live native actions additionally require global `feat/native-client-actions` commit `4bb5772` or a merged descendant, deployed before this host. Those packages are external runtime dependencies of the pending device smoke, not dependencies imported by this native project.
+The global repository uses a React Vite WebFrontend, FastAPI CAICore backend, conversations REST/SSE, Cosmos persistence, a CRM tool service, and Docker Compose for local services. The current Erikli channel has `auth.enabled: false`. Live native actions additionally require global `feat/native-client-actions` commit `66c88d5` or a merged descendant, deployed before this host. Those packages are external runtime dependencies of the pending device smoke, not dependencies imported by this native project.

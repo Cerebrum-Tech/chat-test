@@ -18,7 +18,7 @@
 - [x] WEB-04: Native actions originate from current live frontend delivery, not restored or refetched history.
 - [x] WEB-05: The documented smoke for the current Erikli `auth.enabled: false` channel targets direct load and REST/SSE without login.
 - [x] WEB-06: Auth-enabled Expo hosting is unsupported until a separately designed and tested system-browser/deep-link callback preserves WebView auth-result/session context.
-- [x] WEB-07: Complete-stack/live-action guidance requires global `feat/native-client-actions` at `4bb5772` or a merged descendant before this host is rolled out.
+- [x] WEB-07: Complete-stack/live-action guidance requires global `feat/native-client-actions` at `66c88d5` or a merged descendant before this host is rolled out.
 
 ## Native action
 

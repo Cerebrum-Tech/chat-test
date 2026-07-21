@@ -6,7 +6,7 @@ This Expo application embeds the global CAICore Vite frontend in a native WebVie
 
 - Node.js and npm compatible with Expo SDK 53.
 - An Android emulator, iOS simulator, or device that can run Expo Go.
-- A checkout or deployment of the global CAICore `feat/native-client-actions` revision at commit `4bb5772` or a merged descendant when exercising the complete stack.
+- A checkout or deployment of the global CAICore `feat/native-client-actions` revision at commit `66c88d5` or a merged descendant when exercising the complete stack.
 
 ## Install, configure, and verify
 
@@ -67,11 +67,11 @@ Restart Expo with --clear after changing .env.
 
 ## Run the global stack
 
-Complete-stack, Vite, and live-action smoke require the companion global native-action producer and dispatcher. Use a global checkout of `feat/native-client-actions` at `4bb5772`, or any descendant that contains it. Replace the placeholder below with that checkout and verify the ancestry before starting services:
+Complete-stack, Vite, and live-action smoke require the companion global native-action producer and dispatcher. Use a global checkout of `feat/native-client-actions` at `66c88d5`, or any descendant that contains it. Replace the placeholder below with that checkout and verify the ancestry before starting services:
 
 ~~~bash
-cd /path/to/global-checkout-containing-4bb5772
-git merge-base --is-ancestor 4bb5772 HEAD
+cd /path/to/global-checkout-containing-66c88d5
+git merge-base --is-ancestor 66c88d5 HEAD
 ~~~
 
 An ancestry-check failure means that checkout cannot produce the live native action and is not a valid smoke target. For rollout, deploy the global revision first and this native host second; deploying the native host first leaves it without the required producer/dispatcher.
@@ -79,7 +79,7 @@ An ancestry-check failure means that checkout cannot produce the live native act
 The verified global checkout requires local secret files before Compose or Vite smoke. Create both backend files first:
 
 ~~~bash
-cd /path/to/global-checkout-containing-4bb5772
+cd /path/to/global-checkout-containing-66c88d5
 cp CAICore/.env.example CAICore/.env
 cp WatersMCPServer/.env.example WatersMCPServer/.env
 ~~~
@@ -97,7 +97,7 @@ Alternatively, configure a real KEY_VAULT_URL plus the Azure service-principal c
 The Compose stack provides Cosmos, the CRM tool service, and CAICore. Start it only after those files are ready:
 
 ~~~bash
-cd /path/to/global-checkout-containing-4bb5772
+cd /path/to/global-checkout-containing-66c88d5
 docker compose -f docker-compose.dev.yaml up --build
 ~~~
 
@@ -110,7 +110,7 @@ VITE_AGENT_KEY=erikli
 WEB_ENTRY_POINT_ID=erikli is the entry-point alternative; do not set both selectors. For the recommended same-origin development path, leave VITE_API_BASE_URL and WEB_API_BASE_URL unset so /v1 uses Vite's proxy. Then run:
 
 ~~~bash
-cd /path/to/global-checkout-containing-4bb5772/WebFrontend
+cd /path/to/global-checkout-containing-66c88d5/WebFrontend
 npm ci
 npm run dev -- --host 0.0.0.0
 ~~~

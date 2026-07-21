@@ -42,7 +42,7 @@ Status: implementation and automated verification complete; live device validati
 - [x] Refresh setup, architecture, integration, convention, structure, concern, and testing documents.
 - [x] Keep .planning/phases/01-migration unchanged as historical evidence.
 - [x] Define automated verification, Android export, Docker stack, and device smoke procedures.
-- [x] Require global `feat/native-client-actions` commit `4bb5772` or a merged descendant before complete-stack smoke and native rollout.
+- [x] Require global `feat/native-client-actions` commit `66c88d5` or a merged descendant before complete-stack smoke and native rollout.
 - [ ] Execute the live Docker/device smoke; it was not completed in the implementation environment.
 
 ## Future work
