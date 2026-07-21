@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
+import { buildWebViewBootstrap } from '../services/webViewBootstrap';
 import { ChatWebViewProps, WebViewMessage } from '../types/webview';
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
@@ -10,22 +11,16 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 }) => {
   const webViewRef = useRef<WebView>(null);
 
-  const watersUrl = process.env.EXPO_PUBLIC_WATERS_BOT_URL || '';
-  const accessToken = process.env.EXPO_PUBLIC_WATERS_ACCESS_TOKEN || '';
-  const userId = process.env.EXPO_PUBLIC_WATERS_USER_ID || '';
-  const language = process.env.EXPO_PUBLIC_WATERS_LANGUAGE || '';
-
-  const injectedJavaScriptBeforeContentLoaded = `
-    window.__CHAT_BACKEND_AUTH__ = ${JSON.stringify({
-      type: 'ceremeet',
-      token: accessToken,
-    })};
-    window.__CHAT_BACKEND_CONTEXT__ = ${JSON.stringify({
-      userId: userId || undefined,
-      language: language || undefined,
-    })};
-    true;
-  `;
+  const frontendUrl = process.env.EXPO_PUBLIC_CAI_FRONTEND_URL?.trim() ?? '';
+  const injectedJavaScriptBeforeContentLoaded = buildWebViewBootstrap({
+    apiBaseUrl: process.env.EXPO_PUBLIC_CAI_API_BASE_URL,
+    context: {
+      userId: process.env.EXPO_PUBLIC_CAI_USER_ID || undefined,
+      userName: process.env.EXPO_PUBLIC_CAI_USER_NAME || undefined,
+      language: process.env.EXPO_PUBLIC_CAI_LANGUAGE || undefined,
+      country: process.env.EXPO_PUBLIC_CAI_COUNTRY || undefined,
+    },
+  });
 
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
     try {
@@ -58,7 +53,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       const isDataOrAbout = /^(about:blank|data:|blob:)/i.test(url);
       if (!isHttp || isDataOrAbout) return true;
       const extractHost = (u: string) => u.replace(/^https?:\/\//i, '').split('/')[0];
-      const baseHost = extractHost(watersUrl);
+      const baseHost = extractHost(frontendUrl);
       const urlHost = extractHost(url);
       if (baseHost !== urlHost) {
         Linking.openURL(url).catch(err => console.error('Failed to open URL:', err));
@@ -75,7 +70,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     <View style={[styles.container, style]}>
       <WebView
         ref={webViewRef}
-        source={{ uri: watersUrl }}
+        source={{ uri: frontendUrl }}
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
         onMessage={handleWebViewMessage}
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
