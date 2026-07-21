@@ -83,7 +83,9 @@ mv "$chat_test_export_dir" /tmp/
 npx expo start --clear
 ~~~
 
-Run npm ci before package checks. Use the global repository's documented docker-compose.dev.yaml workflow and a separately running Vite frontend for a complete device smoke.
+Run npm ci before package checks. Before a complete device smoke, copy the global repository's CAICore/.env.example and WatersMCPServer/.env.example to their local .env files. CAICore requires valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values (or a real Key Vault plus local-container Azure credentials). WatersMCPServer requires WATERS_API_URL, WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Never commit populated secret files.
+
+Create WebFrontend/.env.local with exactly one selector: VITE_AGENT_KEY=erikli is recommended for the current configuration, while WEB_ENTRY_POINT_ID=erikli is the alternative. Leave VITE_API_BASE_URL, WEB_API_BASE_URL, and the native EXPO_PUBLIC_CAI_API_BASE_URL unset for the default development path so Vite's same-origin /v1 proxy is used. A direct native API override also requires CAICore ALLOWED_ORIGINS to contain the WebView's exact frontend origin. Then use docker-compose.dev.yaml, the separately running Vite frontend, and the device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL described in README.md.
 
 ## Documentation scope
 

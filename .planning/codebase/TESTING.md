@@ -50,6 +50,16 @@ There is no enforced coverage threshold. Passing suites do not replace device-le
 
 ## Docker and device smoke
 
+Prepare the global service credentials before starting Compose or Vite:
+
+~~~bash
+cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+cp CAICore/.env.example CAICore/.env
+cp WatersMCPServer/.env.example WatersMCPServer/.env
+~~~
+
+For direct local credentials, remove or comment the sample KEY_VAULT_URL in CAICore/.env and set valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values. A real Key Vault plus local-container Azure credentials is the alternative. In WatersMCPServer/.env, confirm WATERS_API_URL and fill WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Keep both populated files uncommitted.
+
 Start the global services:
 
 ~~~bash
@@ -57,7 +67,7 @@ cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
 docker compose -f docker-compose.dev.yaml up --build
 ~~~
 
-Run WebFrontend separately and bind Vite for device access:
+Before starting WebFrontend, create WebFrontend/.env.local with exactly one valid selector. For the current global configuration use VITE_AGENT_KEY=erikli, or use WEB_ENTRY_POINT_ID=erikli instead. Leave VITE_API_BASE_URL and WEB_API_BASE_URL unset so the browser uses Vite's same-origin /v1 proxy. Then bind Vite for device access:
 
 ~~~bash
 cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr/WebFrontend
@@ -65,11 +75,13 @@ npm ci
 npm run dev -- --host 0.0.0.0
 ~~~
 
-Configure all six native environment fields with device-reachable frontend and API URLs. Android Emulator uses 10.0.2.2 for host ports. Start this host with:
+The native host supports EXPO_PUBLIC_CAI_FRONTEND_URL, EXPO_PUBLIC_CAI_API_BASE_URL, EXPO_PUBLIC_CAI_USER_ID, EXPO_PUBLIC_CAI_USER_NAME, EXPO_PUBLIC_CAI_LANGUAGE, and EXPO_PUBLIC_CAI_COUNTRY. Only the frontend URL is required. For the recommended Android Emulator smoke, set it to http://10.0.2.2:5174 and remove or comment the illustrative API base line copied from env.sample; the four public context fields may be set as needed. A physical device uses the host LAN address. Start this host with:
 
 ~~~bash
 npx expo start --clear
 ~~~
+
+If the optional API base points directly to CAICore instead, add the WebView's exact frontend origin to ALLOWED_ORIGINS in the global CAICore/.env before Compose. For example, http://10.0.2.2:8000 requires http://10.0.2.2:5174 in ALLOWED_ORIGINS when Vite uses port 5174.
 
 Verify:
 

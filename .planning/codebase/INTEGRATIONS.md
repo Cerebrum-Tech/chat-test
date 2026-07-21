@@ -66,14 +66,24 @@ External-open failures use fixed warning text and do not expose the requested UR
 
 The related repository is /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr.
 
-Its documented local workflow is:
+Create its required local environment files before Compose or Vite:
+
+~~~bash
+cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+cp CAICore/.env.example CAICore/.env
+cp WatersMCPServer/.env.example WatersMCPServer/.env
+~~~
+
+For direct local credentials, remove or comment the sample KEY_VAULT_URL in CAICore/.env and set NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET. A real Key Vault with the local-container Azure credentials is the alternative. In WatersMCPServer/.env, confirm WATERS_API_URL and fill WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Populated files contain secrets and remain uncommitted.
+
+The Compose workflow is:
 
 ~~~bash
 cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
 docker compose -f docker-compose.dev.yaml up --build
 ~~~
 
-The Compose file starts Cosmos, the CRM tool service, and CAICore. Run the WebFrontend separately:
+The Compose file starts Cosmos, the CRM tool service, and CAICore. Create WebFrontend/.env.local with VITE_AGENT_KEY=erikli before running the frontend. WEB_ENTRY_POINT_ID=erikli is the alternative selector; configure exactly one. Leave VITE_API_BASE_URL and WEB_API_BASE_URL unset for the same-origin /v1 proxy:
 
 ~~~bash
 cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr/WebFrontend
@@ -81,7 +91,7 @@ npm ci
 npm run dev -- --host 0.0.0.0
 ~~~
 
-Configure this host with device-reachable frontend and API URLs, then use npx expo start --clear. Android Emulator reaches host ports through 10.0.2.2; a physical device uses the host LAN address.
+Configure this host with a device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL, then use npx expo start --clear. The recommended local path leaves the optional EXPO_PUBLIC_CAI_API_BASE_URL unset so the WebView uses Vite's same-origin proxy. Android Emulator reaches host ports through 10.0.2.2; a physical device uses the host LAN address. If a direct API override is required, CAICore ALLOWED_ORIGINS must include the WebView's exact frontend scheme, host, and port.
 
 ## No incoming server integration
 

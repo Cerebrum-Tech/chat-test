@@ -30,7 +30,7 @@
 
 ## Supported environment
 
-The six supported fields are EXPO_PUBLIC_CAI_FRONTEND_URL, EXPO_PUBLIC_CAI_API_BASE_URL, EXPO_PUBLIC_CAI_USER_ID, EXPO_PUBLIC_CAI_USER_NAME, EXPO_PUBLIC_CAI_LANGUAGE, and EXPO_PUBLIC_CAI_COUNTRY.
+The six supported fields are EXPO_PUBLIC_CAI_FRONTEND_URL, EXPO_PUBLIC_CAI_API_BASE_URL, EXPO_PUBLIC_CAI_USER_ID, EXPO_PUBLIC_CAI_USER_NAME, EXPO_PUBLIC_CAI_LANGUAGE, and EXPO_PUBLIC_CAI_COUNTRY. The frontend URL is required; the API base and four public context fields are optional. Local device smoke should omit the API base by default and use Vite's same-origin proxy.
 
 Device URLs must address the development host. Android Emulator uses 10.0.2.2 for host services; physical devices use a reachable LAN address.
 

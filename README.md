@@ -36,35 +36,69 @@ Every EXPO_PUBLIC_ value is embedded in the client bundle. Do not put secrets, a
 
 ## Device and emulator host resolution
 
-The two configured URLs must resolve from the device or emulator back to the development host. Device-local localhost points at the device itself.
+The configured frontend URL, and any optional direct API override, must resolve from the device or emulator back to the development host. Device-local localhost points at the device itself.
 
 - Android Emulator: use 10.0.2.2 for services bound on the host.
 - Physical device: use the development machine's LAN address and ensure the firewall and service bind address permit access.
 - iOS Simulator: localhost normally resolves to the Mac host; use the LAN address when that is not true for the selected setup.
 
-For example, when the global frontend is on host port 5174 and the API is on port 8000, an Android Emulator configuration is:
+For example, the recommended Android Emulator configuration uses the Vite frontend on host port 5174 and leaves the optional API override unset. After copying env.sample, remove or comment its illustrative EXPO_PUBLIC_CAI_API_BASE_URL line. Browser requests then stay on the Vite origin and its /v1 proxy forwards them to the API on host port 8000:
 
 ~~~dotenv
 EXPO_PUBLIC_CAI_FRONTEND_URL=http://10.0.2.2:5174
-EXPO_PUBLIC_CAI_API_BASE_URL=http://10.0.2.2:8000
+# EXPO_PUBLIC_CAI_API_BASE_URL is intentionally omitted.
 EXPO_PUBLIC_CAI_USER_ID=test-user
 EXPO_PUBLIC_CAI_USER_NAME=Test User
 EXPO_PUBLIC_CAI_LANGUAGE=tr-TR
 EXPO_PUBLIC_CAI_COUNTRY=TR
 ~~~
 
+If a direct API override is needed instead, set EXPO_PUBLIC_CAI_API_BASE_URL to the device-reachable backend URL and add the WebView's exact scheme, host, and Vite port to CAICore/.env. For the Android Emulator example, preserve the existing localhost entries and add http://10.0.2.2:5174:
+
+~~~dotenv
+# This native repository's .env
+EXPO_PUBLIC_CAI_API_BASE_URL=http://10.0.2.2:8000
+
+# The global repository's CAICore/.env
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://10.0.2.2:5174
+~~~
+
 Restart Expo with --clear after changing .env.
 
 ## Run the global stack
 
-The global repository documents a Compose stack for Cosmos, the CRM tool service, and CAICore. Start it from that repository:
+The global repository requires local secret files before Compose or Vite smoke. Create both backend files first:
+
+~~~bash
+cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+cp CAICore/.env.example CAICore/.env
+cp WatersMCPServer/.env.example WatersMCPServer/.env
+~~~
+
+For direct local CAICore credentials, remove or comment the sample KEY_VAULT_URL unless it names a reachable vault, then add valid NesGen values to CAICore/.env:
+
+~~~dotenv
+NESGEN_ENDPOINT=<NesGen base endpoint>
+NESGEN_CLIENT_ID=<NesGen client id>
+NESGEN_CLIENT_SECRET=<NesGen client secret>
+~~~
+
+Alternatively, configure a real KEY_VAULT_URL plus the Azure service-principal credentials required by the local container. In WatersMCPServer/.env, confirm WATERS_API_URL and fill WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID with the approved pre-production values. Never commit either populated file.
+
+The Compose stack provides Cosmos, the CRM tool service, and CAICore. Start it only after those files are ready:
 
 ~~~bash
 cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
 docker compose -f docker-compose.dev.yaml up --build
 ~~~
 
-The Vite frontend is a separate development process:
+The Vite frontend is a separate development process. Before starting it, create WebFrontend/.env.local with exactly one agent selector. The current global configuration uses the erikli request key, so the recommended file is:
+
+~~~dotenv
+VITE_AGENT_KEY=erikli
+~~~
+
+WEB_ENTRY_POINT_ID=erikli is the entry-point alternative; do not set both selectors. For the recommended same-origin development path, leave VITE_API_BASE_URL and WEB_API_BASE_URL unset so /v1 uses Vite's proxy. Then run:
 
 ~~~bash
 cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr/WebFrontend

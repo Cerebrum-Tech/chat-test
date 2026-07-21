@@ -20,7 +20,7 @@ userId and userName may still be personal data even though they are not authenti
 
 An emulator or physical device must reach the development host. Android Emulator uses 10.0.2.2; a physical device needs a routable LAN address, an accepting service bind, and appropriate firewall rules.
 
-Mitigation: test both the frontend and API URLs from the target device before diagnosing the WebView.
+Mitigation: test the frontend URL from the target device before diagnosing the WebView. Test a backend URL separately only when the optional direct API override is configured.
 
 ### Missing frontend URL fails at runtime
 
@@ -33,6 +33,12 @@ Mitigation: validate .env during setup and include npx expo config plus a device
 env.sample is illustrative. The global Vite server prints its actual port, and deployed environments may use a different origin.
 
 Mitigation: configure the exact device-reachable URL rather than assuming a port.
+
+### Direct API overrides require a matching CORS origin
+
+The global backend's default development allowlist covers localhost Vite origins, not an Android Emulator WebView origin such as http://10.0.2.2:5174. Setting EXPO_PUBLIC_CAI_API_BASE_URL to http://10.0.2.2:8000 without updating the backend therefore makes browser API requests fail CORS.
+
+Mitigation: omit the API override for local device smoke and let Vite's same-origin /v1 proxy reach CAICore. If a direct override is required, add the WebView's exact scheme, host, and port to ALLOWED_ORIGINS in the global CAICore/.env before starting Compose.
 
 ## Authentication and cache
 
