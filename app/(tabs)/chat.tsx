@@ -1,55 +1,28 @@
-import React, { useState } from 'react';
-import { SafeAreaView, StyleSheet, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useCallback, useRef } from 'react';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import { ChatWebView } from '../../components/ChatWebView';
-import { ConfirmationModal } from '../../components/ConfirmationModal';
+import type { MainPageNavigationRequest } from '../../types/webview';
 
 export default function ChatScreen() {
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [pendingNavigation, setPendingNavigation] = useState<{
-    pageName: string;
-    caseId: string;
-  } | null>(null);
-
-  const handleConfirmNavigation = () => {
-    if (pendingNavigation) {
-      console.log(
-        `Navigating to ${pendingNavigation.pageName} with case ${pendingNavigation.caseId}`
-      );
-      // Here you would implement your actual navigation logic
+  const router = useRouter();
+  const navigationInFlight = useRef(false);
+  const handleNavigationRequest = useCallback((request: MainPageNavigationRequest) => {
+    if (navigationInFlight.current) return;
+    navigationInFlight.current = true;
+    try {
+      router.replace(request);
+    } catch {
+      navigationInFlight.current = false;
+      console.warn('Native navigation failed');
     }
-    setShowConfirmModal(false);
-    setPendingNavigation(null);
-  };
-
-  const handleCancelNavigation = () => {
-    setShowConfirmModal(false);
-    setPendingNavigation(null);
-  };
+  }, [router]);
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.webviewContainer}>
-        <ChatWebView
-          onNavigationRequest={(pageName, caseId) => {
-            setPendingNavigation({ pageName, caseId });
-            setShowConfirmModal(true);
-          }}
-          style={styles.webview}
-        />
-      </View>
-
-      <ConfirmationModal
-        visible={showConfirmModal}
-        title="🚀 Navigation Request"
-        message={
-          pendingNavigation
-            ? `Navigate to: ${pendingNavigation.pageName}\nCase ID: ${pendingNavigation.caseId}`
-            : ''
-        }
-        onConfirm={handleConfirmNavigation}
-        onCancel={handleCancelNavigation}
-        confirmText="Navigate"
-        cancelText="Cancel"
+      <ChatWebView
+        onNavigationRequest={handleNavigationRequest}
+        style={styles.webview}
       />
     </SafeAreaView>
   );
@@ -59,10 +32,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#141414',
-  },
-  webviewContainer: {
-    flex: 1,
-    backgroundColor: '#000',
   },
   webview: {
     flex: 1,

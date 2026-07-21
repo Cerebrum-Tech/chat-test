@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import WebView, { WebViewMessageEvent } from 'react-native-webview';
+import WebView, { type WebViewMessageEvent } from 'react-native-webview';
+import { parseNavigationRequest } from '../services/navigationAction';
 import { buildWebViewBootstrap } from '../services/webViewBootstrap';
 import { classifyWebViewUrl } from '../services/webViewUrlPolicy';
-import { ChatWebViewProps, WebViewMessage } from '../types/webview';
+import type { ChatWebViewProps } from '../types/webview';
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
-  onMessage,
   onNavigationRequest,
   style,
 }) => {
@@ -24,25 +24,8 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
   });
 
   const handleWebViewMessage = (event: WebViewMessageEvent) => {
-    try {
-      const message: WebViewMessage = JSON.parse(event.nativeEvent.data);
-      console.log('📥 WebView message:', {
-        timestamp: new Date().toISOString(),
-        process: message.Process,
-      });
-      if (message.Process === 'GotoPage' && onNavigationRequest) {
-        console.log('🚀 Navigation request:', {
-          pageName: message.Data.PageName,
-          caseId: message.Data.CaseId,
-        });
-        onNavigationRequest(message.Data.PageName, message.Data.CaseId);
-      }
-      if (onMessage) {
-        onMessage(message);
-      }
-    } catch (error) {
-      console.error('❌ Error parsing WebView message:', error);
-    }
+    const request = parseNavigationRequest(event.nativeEvent.data);
+    if (request) onNavigationRequest?.(request);
   };
 
   const handleShouldStartLoadWithRequest = (request: { url?: string }) => {

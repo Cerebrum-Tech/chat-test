@@ -39,4 +39,38 @@ describe('ChatWebView', () => {
     ).toBe(false);
     expect(openUrl).toHaveBeenCalledTimes(1);
   });
+
+  it('emits navigation only for a strict lowercase bridge message', () => {
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const onNavigationRequest = jest.fn();
+    const { getByTestId } = render(
+      <ChatWebView onNavigationRequest={onNavigationRequest} />,
+    );
+    const webView = getByTestId('webview');
+
+    webView.props.onMessage({
+      nativeEvent: {
+        data: JSON.stringify({
+          output_type: 'navigation',
+          process: 'GotoPage',
+          data: { page_name: 'MainPage', case_id: 'incident-1' },
+        }),
+      },
+    });
+    webView.props.onMessage({
+      nativeEvent: {
+        data: JSON.stringify({
+          Process: 'GotoPage',
+          Data: { PageName: 'MainPage', CaseId: 'legacy' },
+        }),
+      },
+    });
+    webView.props.onMessage({ nativeEvent: { data: '{' } });
+
+    expect(onNavigationRequest).toHaveBeenCalledTimes(1);
+    expect(onNavigationRequest).toHaveBeenCalledWith({
+      pathname: '/main-page',
+      params: { case_id: 'incident-1' },
+    });
+  });
 });

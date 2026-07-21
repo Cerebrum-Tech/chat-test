@@ -1,18 +1,22 @@
-export interface WebViewMessage {
-  Process: string;
-  Data: any;
-}
+import type { StyleProp, ViewStyle } from 'react-native';
 
-export interface GotoPageMessage extends WebViewMessage {
-  Process: 'GotoPage';
-  Data: {
-    PageName: string;
-    CaseId: string;
+export interface NavigationAction {
+  output_type: 'navigation';
+  process: 'GotoPage';
+  data: {
+    page_name: 'MainPage';
+    case_id?: string;
   };
 }
 
+export type MainPageNavigationRequest = {
+  pathname: '/main-page';
+  params?: {
+    case_id: string;
+  };
+};
+
 export interface ChatWebViewProps {
-  onMessage?: (message: WebViewMessage) => void;
-  onNavigationRequest?: (pageName: string, caseId: string) => void;
-  style?: any;
+  onNavigationRequest?: (request: MainPageNavigationRequest) => void;
+  style?: StyleProp<ViewStyle>;
 }
