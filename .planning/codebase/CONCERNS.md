@@ -8,7 +8,7 @@
 
 Every EXPO_PUBLIC_ value is bundled into the client. The six supported fields must contain only endpoint and public user context data. Adding credentials, bearer values, private storage keys, or unbounded context would expose them to users.
 
-Mitigation: keep the allowlist in services/webViewBootstrap.ts, leave authentication with the frontend AuthProvider, and retain tests that reject unsupported properties and token-like data.
+Mitigation: keep the property allowlist in services/webViewBootstrap.ts and retain tests that reject unsupported property names and non-string values. The serializer does not detect sensitive or token-like content inside an allowed string field; configuration callers remain responsible for keeping userId, userName, language, and country public.
 
 ### Browser context contains identity hints
 
@@ -40,13 +40,27 @@ The global backend's default development allowlist covers localhost Vite origins
 
 Mitigation: omit the API override for local device smoke and let Vite's same-origin /v1 proxy reach CAICore. If a direct override is required, add the WebView's exact scheme, host, and port to ALLOWED_ORIGINS in the global CAICore/.env before starting Compose.
 
+### Live actions require a companion global revision
+
+The native bridge consumes an action that is produced and dispatched only by global `feat/native-client-actions` at `4bb5772` or a merged descendant. A stack on an earlier global revision can pass basic REST/SSE checks while never exercising native navigation.
+
+Mitigation: run `git merge-base --is-ancestor 4bb5772 HEAD` in the selected global checkout before Compose or Vite smoke. Deploy the global revision first and this native host second.
+
 ## Authentication and cache
 
-### Session behavior spans two policies
+### Current target is auth-disabled
 
-Document caching is disabled, while DOM storage remains enabled so AuthProvider can maintain a mounted session. Re-entering chat remounts the WebView and may require the frontend to restore or establish authentication.
+The Erikli global channel currently has `auth.enabled: false`. The smoke checklist covers direct loading and conversation REST/SSE without login. AuthProvider is still the only permitted token owner if auth is enabled in a future configuration, but it is not exercised by the current smoke.
 
-Mitigation: keep authentication tests in the frontend and exercise leave/re-enter behavior on a device.
+Auth-enabled Expo hosting is currently unsupported: cross-origin HTTP(S) leaves the WebView, and there is no tested callback that returns a system-browser auth result while preserving the WebView session context.
+
+Mitigation: design and device-test a system-browser/deep-link callback and session handoff before enabling auth for this host. Do not infer auth support from DOM storage or cookie settings.
+
+### Mixed content and third-party cookies remain enabled
+
+ChatWebView intentionally retains `mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}`. These settings preserve current behavior but increase the production security/privacy surface.
+
+Mitigation: treat tightening either prop as a separate hardening change with a deployment-specific compatibility review and device tests. Do not change runtime behavior in documentation-only reconciliation.
 
 ## Native navigation
 
@@ -76,7 +90,7 @@ Mitigation: exercise representative link types on each supported mobile platform
 
 ## Test coverage
 
-Unit and component tests cover the native boundary, but there is no automated device E2E suite. Live AuthProvider, REST/SSE, operating-system linking, network reachability, and history restoration require the Docker/device smoke matrix.
+Unit and component tests cover the native boundary, but there is no automated device E2E suite. The live Docker/device smoke was not completed in this environment. Direct load, auth-disabled REST/SSE, live action delivery, operating-system linking, network reachability, and history restoration still require that matrix before release.
 
 ## Dependency health
 

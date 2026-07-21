@@ -6,7 +6,7 @@
 
 The application is an Expo Router native shell around the global CAICore Vite frontend. The boundary is deliberately narrow: bootstrap public context before the page loads, enforce URL policy, parse one bridge action, and route to one native screen.
 
-The browser application owns authentication, conversations REST calls, SSE ingestion, message rendering, and the rule that only newly ingested live actions are posted. The native application owns the WebView container and native routing.
+The browser application owns conversations REST calls, SSE ingestion, message rendering, and the rule that only newly ingested live actions are posted. If authentication is enabled, its AuthProvider is the only token owner. The current Erikli channel has `auth.enabled: false`, so the supported Expo path has no login. The native application owns the WebView container and native routing.
 
 ## Runtime layers
 
@@ -39,7 +39,7 @@ ChatWebView:
 
 Location: services/
 
-- webViewBootstrap.ts projects only apiBaseUrl, userId, userName, language, and country into a safe serialized script.
+- webViewBootstrap.ts projects only apiBaseUrl, userId, userName, language, and country into a safely serialized script. This allowlists property names and types; it does not inspect allowed string values for sensitive content.
 - webViewUrlPolicy.ts converts a requested URL and configured frontend URL into allow, open-external, or block.
 - navigationAction.ts parses the exact lowercase envelope and returns a typed /main-page route request or null.
 
@@ -58,9 +58,13 @@ The type module defines the exact navigation envelope, the native route request,
 3. ChatWebView builds injectedJavaScriptBeforeContentLoaded.
 4. The script optionally assigns window.__CAI_API_BASE_URL__ and assigns window.__CHAT_BACKEND_CONTEXT__ with allowlisted public values.
 5. The WebView requests the configured global Vite frontend URL directly.
-6. The frontend AuthProvider owns authentication and the frontend uses REST plus SSE for conversations.
+6. The current auth-disabled frontend uses REST plus SSE for conversations without login.
 
-The native script never supplies a token or authentication object.
+The native script never supplies a token or authentication object. For a future auth-enabled target, AuthProvider remains the only token owner, but auth-enabled Expo hosting is unsupported until a separate system-browser/deep-link callback is designed and tested to preserve the WebView auth-result/session context.
+
+## Cross-repository runtime dependency
+
+Live native actions depend on the producer and dispatcher from global `feat/native-client-actions` commit `4bb5772` or a merged descendant. That global revision must be checked out for complete-stack smoke and deployed before this native host; otherwise REST/SSE can run but no compatible live action is produced for the bridge.
 
 ## Navigation flow
 
@@ -88,7 +92,9 @@ Origin comparison includes scheme, hostname, and effective port.
 
 ## Cache and session boundary
 
-cacheEnabled=false and cacheMode=LOAD_NO_CACHE prevent document-cache reuse. incognito mode is not enabled. domStorageEnabled=true allows the frontend to maintain its current browser session and AuthProvider state while mounted.
+cacheEnabled=false and cacheMode=LOAD_NO_CACHE prevent document-cache reuse. incognito mode is not enabled. domStorageEnabled=true preserves browser storage while mounted.
+
+`mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}` are intentional current settings retained for compatibility. They expand the production WebView surface and remain hardening concerns; changing them requires a separate policy design and device test. They do not make the unsupported auth-enabled browser callback work.
 
 ## Error and logging boundary
 

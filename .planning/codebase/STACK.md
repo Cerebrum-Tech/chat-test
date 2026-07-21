@@ -24,7 +24,7 @@ No Node version file is committed. Use an actively supported Node release compat
 - react-native-webview 13.13.5 loads the global Vite frontend directly.
 - React Native Linking opens supported external URLs.
 - injectedJavaScriptBeforeContentLoaded supplies optional API configuration and public user context.
-- No native REST, SSE, or authentication client is installed for chat; the loaded frontend owns those capabilities.
+- No native REST, SSE, or authentication client is installed for chat; the loaded frontend owns REST/SSE and would own authentication through AuthProvider if auth were enabled.
 
 ## Testing and quality
 
@@ -60,4 +60,4 @@ npm run lint
 
 ## Related global stack
 
-The global repository uses a React Vite WebFrontend, FastAPI CAICore backend, conversations REST/SSE, Cosmos persistence, a CRM tool service, and Docker Compose for local services. Those packages are external runtime dependencies of the device smoke, not dependencies imported by this native project.
+The global repository uses a React Vite WebFrontend, FastAPI CAICore backend, conversations REST/SSE, Cosmos persistence, a CRM tool service, and Docker Compose for local services. The current Erikli channel has `auth.enabled: false`. Live native actions additionally require global `feat/native-client-actions` commit `4bb5772` or a merged descendant, deployed before this host. Those packages are external runtime dependencies of the pending device smoke, not dependencies imported by this native project.

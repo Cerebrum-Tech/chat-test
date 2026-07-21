@@ -2,7 +2,7 @@
 
 ## Milestone: global frontend native host
 
-Status: complete
+Status: implementation and automated verification complete; live device validation pending
 
 ### 1. Automated baseline
 
@@ -15,8 +15,10 @@ Status: complete
 - [x] Replace generated WebView content with direct Vite frontend loading.
 - [x] Define the six supported Expo environment fields.
 - [x] Inject only an optional API URL and allowlisted public context.
-- [x] Keep AuthProvider, REST, and SSE ownership in the frontend.
+- [x] Keep REST/SSE ownership in the frontend and AuthProvider as the only possible token owner.
 - [x] Ensure no native token injection.
+- [x] Record the current Erikli `auth.enabled: false` direct-load/REST/SSE smoke target.
+- [x] Mark auth-enabled Expo hosting unsupported pending a tested browser/deep-link session handoff.
 
 ### 3. WebView navigation and cache policy
 
@@ -25,6 +27,7 @@ Status: complete
 - [x] Open supported external URLs through Linking.
 - [x] Block malformed and unsupported URLs.
 - [x] Disable document caching and retain DOM storage.
+- [x] Retain mixed-content compatibility and third-party cookies as explicit production-hardening concerns.
 
 ### 4. Immediate native navigation
 
@@ -39,7 +42,9 @@ Status: complete
 - [x] Refresh setup, architecture, integration, convention, structure, concern, and testing documents.
 - [x] Keep .planning/phases/01-migration unchanged as historical evidence.
 - [x] Define automated verification, Android export, Docker stack, and device smoke procedures.
+- [x] Require global `feat/native-client-actions` commit `4bb5772` or a merged descendant before complete-stack smoke and native rollout.
+- [ ] Execute the live Docker/device smoke; it was not completed in the implementation environment.
 
 ## Future work
 
-No additional feature is committed in this roadmap. Dependency maintenance, platform E2E automation, and production deployment configuration should be planned separately.
+Dependency maintenance, platform E2E automation, production WebView hardening, and auth-enabled browser/deep-link callback support should be planned separately.

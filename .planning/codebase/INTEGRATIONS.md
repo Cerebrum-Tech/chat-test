@@ -22,7 +22,9 @@ The global frontend, not this host:
 
 ## Authentication
 
-The global frontend AuthProvider is the only authentication owner. The native host does not create, store, refresh, or inject a token. Authentication behavior is therefore tested in the frontend and exercised through the device smoke matrix.
+The current Erikli channel has `auth.enabled: false`, so the smoke checklist targets direct frontend loading and conversation REST/SSE without login. The native host does not create, store, refresh, or inject a token. If auth is enabled in a future target, the global AuthProvider remains the only permitted token owner.
+
+Auth-enabled Expo hosting is currently unsupported. Cross-origin HTTP(S) is opened outside the WebView, and no tested callback returns a system-browser auth result while preserving the WebView session context. A system-browser/deep-link callback and session handoff require a separate design and device test before auth can be enabled for this host.
 
 ## Public user context
 
@@ -35,7 +37,7 @@ The native host may expose four optional properties through window.__CHAT_BACKEN
 | EXPO_PUBLIC_CAI_LANGUAGE | language |
 | EXPO_PUBLIC_CAI_COUNTRY | country |
 
-Only string values are projected. Unsupported fields are discarded and all values are JSON-escaped. These are public hints, not proof of identity.
+Only string values are projected. Unsupported property names are discarded and all allowed values are JSON-escaped. Values inside allowed fields are not inspected for token-like content; callers must keep them public. These are hints, not proof of identity.
 
 ## WebView-to-native bridge
 
@@ -64,12 +66,18 @@ External-open failures use fixed warning text and do not expose the requested UR
 
 ## Development stack
 
-The related repository is /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr.
+The related repository is /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr. Complete-stack, Vite, and live-action smoke require a checkout or deployment of its `feat/native-client-actions` branch at commit `4bb5772` or a merged descendant. In the selected global checkout, verify this before starting services:
+
+~~~bash
+git merge-base --is-ancestor 4bb5772 HEAD
+~~~
+
+If that command fails, the checkout lacks the native-action producer/dispatcher and is not a valid live-action target. Roll out the global revision first and this native host second.
 
 Create its required local environment files before Compose or Vite:
 
 ~~~bash
-cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+# Run from the verified global checkout.
 cp CAICore/.env.example CAICore/.env
 cp WatersMCPServer/.env.example WatersMCPServer/.env
 ~~~
@@ -79,19 +87,21 @@ For direct local credentials, remove or comment the sample KEY_VAULT_URL in CAIC
 The Compose workflow is:
 
 ~~~bash
-cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+# Run from the verified global checkout.
 docker compose -f docker-compose.dev.yaml up --build
 ~~~
 
-The Compose file starts Cosmos, the CRM tool service, and CAICore. Create WebFrontend/.env.local with VITE_AGENT_KEY=erikli before running the frontend. WEB_ENTRY_POINT_ID=erikli is the alternative selector; configure exactly one. Leave VITE_API_BASE_URL and WEB_API_BASE_URL unset for the same-origin /v1 proxy:
+The Compose file starts Cosmos, the CRM tool service, and CAICore. The current Erikli config has `auth.enabled: false`. Create WebFrontend/.env.local with VITE_AGENT_KEY=erikli before running the frontend. WEB_ENTRY_POINT_ID=erikli is the alternative selector; configure exactly one. Leave VITE_API_BASE_URL and WEB_API_BASE_URL unset for the same-origin /v1 proxy:
 
 ~~~bash
-cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr/WebFrontend
+cd WebFrontend
 npm ci
 npm run dev -- --host 0.0.0.0
 ~~~
 
-Configure this host with a device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL, then use npx expo start --clear. The recommended local path leaves the optional EXPO_PUBLIC_CAI_API_BASE_URL unset so the WebView uses Vite's same-origin proxy. Android Emulator reaches host ports through 10.0.2.2; a physical device uses the host LAN address. If a direct API override is required, CAICore ALLOWED_ORIGINS must include the WebView's exact frontend scheme, host, and port.
+Configure this host with a device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL on Vite port 5174, then use npx expo start --clear. env.sample leaves the optional EXPO_PUBLIC_CAI_API_BASE_URL blank so the WebView uses Vite's same-origin proxy. Android Emulator reaches host ports through 10.0.2.2; a physical device uses the host LAN address. If a direct API override is required, CAICore ALLOWED_ORIGINS must include the WebView's exact frontend scheme, host, and port.
+
+Live-device execution was not completed in the implementation environment; passing native automation does not establish this integration matrix.
 
 ## No incoming server integration
 

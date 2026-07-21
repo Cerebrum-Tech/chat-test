@@ -11,7 +11,7 @@ The native boundary has four responsibilities:
 3. parse one exact lowercase native action;
 4. replace the native route with /main-page and provide a route back to chat.
 
-The global frontend owns its AuthProvider, conversations REST requests, SSE ingestion, live-action deduplication, and rendering. Do not move authentication or conversation transport into this repository. The native host must not inject a token.
+The global frontend owns conversations REST requests, SSE ingestion, live-action deduplication, and rendering. The current Erikli global channel has `auth.enabled: false`, so the supported smoke path has no login. If authentication is enabled later, the global AuthProvider remains the only permitted token owner. Do not move token ownership or conversation transport into this repository, and never inject a token from the native host.
 
 ## Environment contract
 
@@ -25,6 +25,8 @@ env.sample defines the only six supported Expo fields:
 - EXPO_PUBLIC_CAI_COUNTRY: optional public country context.
 
 All fields are public client configuration. Never add secrets or authentication credentials to an EXPO_PUBLIC_ field. Device and emulator URLs must resolve back to the development host; Android Emulator host services use 10.0.2.2 rather than device-local localhost.
+
+The checked-in happy path uses Vite on port 5174 and leaves EXPO_PUBLIC_CAI_API_BASE_URL blank so the frontend uses its same-origin /v1 proxy. The bootstrap allowlist discards unsupported property names, but it does not detect sensitive or token-like content inside userId, userName, language, or country; callers own the safety of those values.
 
 ## Bridge contract
 
@@ -55,6 +57,8 @@ services/webViewUrlPolicy.ts is the source of URL decisions:
 
 components/ChatWebView.tsx disables the WebView document cache with cacheEnabled=false and cacheMode=LOAD_NO_CACHE. DOM storage stays enabled for the frontend session. Log fixed diagnostic text only; do not log URLs, identity context, route params, or credentials.
 
+The current component intentionally retains mixedContentMode="compatibility" and thirdPartyCookiesEnabled={true}. Treat both as production-hardening concerns; do not change them without a separately designed and device-tested WebView policy.
+
 ## Code ownership
 
 - components/ChatWebView.tsx: direct Vite loading, bootstrap injection, URL enforcement, bridge event entry point;
@@ -83,9 +87,13 @@ mv "$chat_test_export_dir" /tmp/
 npx expo start --clear
 ~~~
 
-Run npm ci before package checks. Before a complete device smoke, copy the global repository's CAICore/.env.example and WatersMCPServer/.env.example to their local .env files. CAICore requires valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values (or a real Key Vault plus local-container Azure credentials). WatersMCPServer requires WATERS_API_URL, WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Never commit populated secret files.
+Run npm ci before package checks. Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `4bb5772` or a merged descendant. Run `git merge-base --is-ancestor 4bb5772 HEAD` in that checkout before starting services. Deploy the global revision first and this native host second so the action producer/dispatcher exists before the consumer.
 
-Create WebFrontend/.env.local with exactly one selector: VITE_AGENT_KEY=erikli is recommended for the current configuration, while WEB_ENTRY_POINT_ID=erikli is the alternative. Leave VITE_API_BASE_URL, WEB_API_BASE_URL, and the native EXPO_PUBLIC_CAI_API_BASE_URL unset for the default development path so Vite's same-origin /v1 proxy is used. A direct native API override also requires CAICore ALLOWED_ORIGINS to contain the WebView's exact frontend origin. Then use docker-compose.dev.yaml, the separately running Vite frontend, and the device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL described in README.md.
+Before a complete device smoke, copy the verified global checkout's CAICore/.env.example and WatersMCPServer/.env.example to their local .env files. CAICore requires valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values (or a real Key Vault plus local-container Azure credentials). WatersMCPServer requires WATERS_API_URL, WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Never commit populated secret files.
+
+Create WebFrontend/.env.local with exactly one selector: VITE_AGENT_KEY=erikli is recommended for the current configuration, while WEB_ENTRY_POINT_ID=erikli is the alternative. The current Erikli target has `auth.enabled: false`; its smoke checklist targets direct load and REST/SSE without login. Leave VITE_API_BASE_URL, WEB_API_BASE_URL, and the native EXPO_PUBLIC_CAI_API_BASE_URL unset or blank for the default development path so Vite's same-origin /v1 proxy is used. A direct native API override also requires CAICore ALLOWED_ORIGINS to contain the WebView's exact frontend origin. Then use docker-compose.dev.yaml, the separately running Vite frontend, and the device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL described in README.md.
+
+Auth-enabled Expo hosting remains unsupported until a separate design and device test provide a system-browser/deep-link callback that preserves the WebView auth-result/session context. The live device smoke was not completed in this environment; do not infer it from passing automated checks.
 
 ## Documentation scope
 

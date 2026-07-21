@@ -40,6 +40,7 @@ Bridge naming is a wire contract, not a TypeScript naming preference. Its key na
 - Treat every Expo public field as user-visible configuration.
 - Inject only window.__CAI_API_BASE_URL__ and allowlisted window.__CHAT_BACKEND_CONTEXT__ properties.
 - Do not inject or log authentication credentials.
+- Treat the bootstrap allowlist as a property-name/type boundary, not a semantic secret scanner. Callers must keep values in allowed string fields public.
 - JSON-serialize browser values; never concatenate unescaped input into JavaScript.
 - Use fixed warning text. Do not log raw messages, URLs, identity, or route params.
 
@@ -68,6 +69,7 @@ Bridge naming is a wire contract, not a TypeScript naming preference. Its key na
 - Send only cross-origin HTTP(S), tel, and mailto through Linking.
 - Block malformed and unsupported schemes by default.
 - Keep cacheEnabled=false, cacheMode=LOAD_NO_CACHE, and domStorageEnabled=true unless a reviewed requirement changes the session model.
+- Retain mixedContentMode="compatibility" and thirdPartyCookiesEnabled={true} as intentional current settings until a separate production-hardening design is device-tested.
 
 ## Tests
 

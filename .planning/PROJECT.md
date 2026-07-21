@@ -12,7 +12,7 @@ Users can run the global web chat in a device-resolved native host and move imme
 
 - [x] Load EXPO_PUBLIC_CAI_FRONTEND_URL directly as the WebView source.
 - [x] Inject an optional API base URL and only userId, userName, language, and country as public browser context.
-- [x] Leave authentication ownership with the global frontend AuthProvider; inject no token.
+- [x] Keep the native host token-free; if auth is enabled later, leave token ownership with the global frontend AuthProvider.
 - [x] Leave conversations REST and SSE ownership with the global frontend.
 - [x] Accept an exact lowercase navigation envelope for GotoPage and MainPage.
 - [x] Replace immediately with /main-page and suppress repeat callbacks before the chat screen unmounts.
@@ -24,17 +24,19 @@ Users can run the global web chat in a device-resolved native host and move imme
 
 ## Runtime boundary
 
-The native host supplies public bootstrap configuration and handles native routing. The global frontend creates and reads conversations through REST, consumes live SSE messages, authenticates through AuthProvider, and ensures restored history does not post old native actions.
+The native host supplies public bootstrap configuration and handles native routing. The global frontend creates and reads conversations through REST, consumes live SSE messages, and ensures restored history does not post old native actions. The current Erikli channel has `auth.enabled: false`, so its supported smoke path uses REST/SSE without login. AuthProvider remains the conceptual token owner for a future auth-enabled target, not a login requirement for this target.
 
 ## Constraints
 
 - Keep Expo, React Native, expo-router, and react-native-webview.
 - Treat every EXPO_PUBLIC_ value as visible client configuration.
 - Do not add credentials or tokens to the native bootstrap.
+- Treat allowlisting as property-name projection, not content inspection; callers must keep allowed string values public.
+- Use global `feat/native-client-actions` at `4bb5772` or a merged descendant before complete-stack/live-action smoke, and roll out that global revision before this host.
 - Preserve exact case-sensitive bridge keys and values.
 - Do not persist or replay received bridge actions.
 - Preserve .planning/phases/01-migration as dated historical evidence.
 
 ## Current milestone
 
-The global frontend host migration is implemented. Maintained documentation and verification describe the running code; archived migration records remain unchanged.
+The global frontend host migration and automated verification are complete. Live Docker/device smoke was not completed in this environment and remains a release-candidate check. Auth-enabled Expo hosting also remains future work pending a tested system-browser/deep-link callback that preserves the WebView auth-result/session context. Archived migration records remain unchanged.

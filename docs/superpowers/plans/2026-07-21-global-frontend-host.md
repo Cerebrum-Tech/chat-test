@@ -13,12 +13,14 @@
 - Work only in `/home/alp/alp-dev/nestle-waters-tr-go/CAICore/chat-test`; the byte-identical sibling `/home/alp/alp-dev/nestle-waters-tr-go/chat-test` is out of scope.
 - Load the global Vite frontend URL directly with `source={{ uri }}`; do not add Chatwoot, inline widget HTML, an iframe wrapper, or a parent-window relay.
 - Inject optional `window.__CAI_API_BASE_URL__` and `window.__CHAT_BACKEND_CONTEXT__` with `userId`, `userName`, `language`, and `country` before content loads.
-- Do not inject `window.__CHAT_BACKEND_AUTH__`, access tokens, private storage keys, query-string tokens, or token-bearing conversation metadata; the WebFrontend `AuthProvider` remains the sole token owner.
+- Do not inject `window.__CHAT_BACKEND_AUTH__`, access tokens, private storage keys, query-string tokens, or token-bearing conversation metadata. The bootstrap allowlist rejects unsupported property names but does not inspect allowed string values for token-like content; callers must keep those values public.
+- The current Erikli global channel has `auth.enabled: false`; smoke is scoped to direct load and conversations REST/SSE without login. If auth is enabled later, the WebFrontend `AuthProvider` remains the only token owner, but Expo hosting is unsupported until a separately designed and tested system-browser/deep-link callback preserves the WebView auth-result/session context.
+- Complete-stack, Vite, and live-action smoke require global `feat/native-client-actions` at `4bb5772` or a merged descendant. Check out or deploy that global revision first, then this native host.
 - Accept only lowercase `output_type/process/data.page_name/data.case_id`; deliberately reject all legacy PascalCase fields.
 - Allow only `GotoPage/MainPage -> /main-page`; route immediately with no modal or confirmation.
-- Treat `case_id` as optional and preserve a nonblank supplied value unchanged.
+- Treat `case_id` as optional. Missing, empty, and whitespace-only values navigate without params; preserve a nonblank supplied value unchanged.
 - Same-origin HTTP(S) stays in the WebView; external HTTP(S), `tel:`, and `mailto:` open through `Linking`; malformed and unsupported schemes are blocked.
-- Disable the WebView document cache without using incognito mode, because frontend authentication/session storage must remain available.
+- Disable the WebView document cache without using incognito mode. Retain `mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}` as intentional current settings and document them as production-hardening concerns; behavior changes require a separate tested design.
 - Never log URLs, user identity, tokens, raw bridge data, or `case_id`.
 - Use `git mv` for the existing service rename and `git rm` for obsolete tracked artifacts.
 - Preserve historical `.planning/phases/01-migration` records; update maintained planning and instruction documents only.
@@ -126,7 +128,7 @@ git commit -m "test(chat-test): configure expo jest"
 **Interfaces:**
 - Produces: `buildWebViewBootstrap(config: WebViewBootstrapConfig): string`.
 - Consumes environment names: `EXPO_PUBLIC_CAI_FRONTEND_URL`, optional `EXPO_PUBLIC_CAI_API_BASE_URL`, `EXPO_PUBLIC_CAI_USER_ID`, `EXPO_PUBLIC_CAI_USER_NAME`, `EXPO_PUBLIC_CAI_LANGUAGE`, `EXPO_PUBLIC_CAI_COUNTRY`.
-- Produces no auth/token global or environment field.
+- Produces no auth/token-named global or environment field. Allowed public string values remain the caller's responsibility.
 
 - [ ] **Step 1: Write the failing bootstrap tests**
 
@@ -158,16 +160,17 @@ describe('buildWebViewBootstrap', () => {
     expect(script).not.toContain('__CAI_API_BASE_URL__');
   });
 
-  it('JSON-escapes values and never emits auth or token fields', () => {
+  it('JSON-escapes allowed values and never emits an auth global', () => {
     const script = buildWebViewBootstrap({
       context: { userName: 'A \"quoted\" user' },
     });
     expect(script).toContain('A \\\"quoted\\\" user');
     expect(script).not.toContain('__CHAT_BACKEND_AUTH__');
-    expect(script.toLowerCase()).not.toContain('token');
   });
 });
 ```
+
+This assertion protects the supported property/global names. It must not claim to detect sensitive content placed inside an allowed string field.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
@@ -232,9 +235,9 @@ Replace `env.sample` with:
 
 ```dotenv
 # Global CAICore WebFrontend host
-EXPO_PUBLIC_CAI_FRONTEND_URL=http://localhost:5173
-# Optional when the frontend and API are not served from the same origin
-EXPO_PUBLIC_CAI_API_BASE_URL=http://localhost:8000
+EXPO_PUBLIC_CAI_FRONTEND_URL=http://localhost:5174
+# Optional; leave blank to use the frontend's same-origin /v1 proxy
+EXPO_PUBLIC_CAI_API_BASE_URL=
 EXPO_PUBLIC_CAI_USER_ID=test-user
 EXPO_PUBLIC_CAI_USER_NAME=Test User
 EXPO_PUBLIC_CAI_LANGUAGE=tr-TR
@@ -371,6 +374,8 @@ const handleShouldStartLoadWithRequest = (request: { url?: string }) => {
 
 Add `cacheEnabled={false}` and `cacheMode="LOAD_NO_CACHE"` to `WebView`. Do not add `incognito`, and remove URL-bearing log messages.
 
+Retain the existing `mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}` props in this implementation. Record them as production-hardening concerns; do not change them in this task without a separate device-tested design.
+
 Replace the current native-event logging handlers with fixed messages that cannot expose request URLs:
 
 ```tsx
@@ -505,6 +510,15 @@ describe('parseNavigationRequest', () => {
     });
   });
 
+  it.each(['', ' \t\n '])('omits a blank case_id while preserving navigation', (caseId) => {
+    expect(
+      parseNavigationRequest(JSON.stringify({
+        ...valid,
+        data: { ...valid.data, case_id: caseId },
+      })),
+    ).toEqual({ pathname: '/main-page' });
+  });
+
   it.each([
     '',
     '{',
@@ -513,7 +527,7 @@ describe('parseNavigationRequest', () => {
     JSON.stringify({ ...valid, output_type: 'text' }),
     JSON.stringify({ ...valid, process: 'OpenPage' }),
     JSON.stringify({ ...valid, data: { page_name: 'OtherPage' } }),
-    JSON.stringify({ ...valid, data: { page_name: 'MainPage', case_id: '' } }),
+    JSON.stringify({ ...valid, data: { page_name: 'MainPage', case_id: 42 } }),
     JSON.stringify({ ...valid, extra: true }),
     JSON.stringify({ ...valid, data: { page_name: 'MainPage', extra: true } }),
   ])('rejects malformed, unknown, extra, or legacy input', (raw) => {
@@ -684,10 +698,10 @@ export function parseNavigationRequest(raw: string): MainPageNavigationRequest |
     if (value.output_type !== 'navigation' || value.process !== 'GotoPage' || !isRecord(value.data)) return null;
     const dataKeys = 'case_id' in value.data ? ['page_name', 'case_id'] : ['page_name'];
     if (!hasExactKeys(value.data, dataKeys) || value.data.page_name !== 'MainPage') return null;
-    if ('case_id' in value.data && (typeof value.data.case_id !== 'string' || !value.data.case_id.trim())) return null;
+    if ('case_id' in value.data && typeof value.data.case_id !== 'string') return null;
     const pathname = ROUTE_MAP.GotoPage.MainPage;
-    return 'case_id' in value.data
-      ? { pathname, params: { case_id: value.data.case_id as string } }
+    return typeof value.data.case_id === 'string' && value.data.case_id.trim()
+      ? { pathname, params: { case_id: value.data.case_id } }
       : { pathname };
   } catch {
     return null;
@@ -819,7 +833,7 @@ The staged rename/deletions are included automatically; review `git status --sho
 - Modify: `.planning/codebase/TESTING.md`
 
 **Interfaces:**
-- Documents: six environment fields, direct Vite loading, REST/SSE ownership, AuthProvider ownership, exact lowercase action, immediate route, URL/cache policy, tests, Docker, and device smoke.
+- Documents: six environment fields, direct Vite loading, REST/SSE ownership, conditional AuthProvider token ownership, exact lowercase action, immediate route, URL/cache policy, tests, Docker, and the pending device smoke.
 - Preserves: `.planning/phases/01-migration/**` as dated historical records rather than active instructions.
 
 - [ ] **Step 1: Rewrite the README as executable setup documentation**
@@ -835,7 +849,7 @@ npm run lint
 npx expo start --clear
 ```
 
-Explain that emulator/device URLs must resolve back to the development host (for example Android emulator `10.0.2.2`, not device-local `localhost`). State that the WebView loads the global Vite frontend; that frontend owns conversations REST/SSE and authentication; the native app injects no token; and the bridge contract is:
+Explain that `env.sample` uses frontend port 5174 and a blank optional API base so Vite's same-origin `/v1` proxy is the default after `cp env.sample .env`. Emulator/device URLs must resolve back to the development host (for example Android emulator `10.0.2.2`, not device-local `localhost`). State that the WebView loads the global Vite frontend; that frontend owns conversations REST/SSE; the current Erikli channel has `auth.enabled: false`; the native app injects no token; and the bridge contract is:
 
 ```json
 {
@@ -863,6 +877,8 @@ Rewrite `CLAUDE.md` and the maintained `.planning` documents so they describe th
 
 Do not rewrite the archived `.planning/phases/01-migration/**` files; their dates and old outcomes are historical evidence.
 
+Document that AuthProvider remains the only token owner if auth is later enabled, while auth-enabled Expo hosting is currently unsupported until a tested system-browser/deep-link callback preserves the WebView auth-result/session context. Also record the required companion global revision, rollout order, retained mixed-content/cookie props, caller responsibility for allowed context values, and the incomplete live-device status.
+
 - [ ] **Step 3: Run active-document and executable cleanup scans**
 
 Run:
@@ -888,33 +904,39 @@ npm run typecheck
 npm run lint
 npx expo config --type public >/dev/null
 
-chat_test_export_dir=$(mktemp -d)
+chat_test_export_dir=$(mktemp -d .expo-export.XXXXXX)
 npx expo export --platform android --output-dir "$chat_test_export_dir"
+mv "$chat_test_export_dir" /tmp/
 git diff --check
 ```
 
-Expected: Jest passes, TypeScript and lint exit 0, Expo public config parses, Android export completes in the temporary directory, and `git diff --check` is silent.
+Expected: Jest passes, TypeScript and lint exit 0, Expo public config parses, Android export completes in the project-local temporary directory before that artifact is moved outside the worktree, and `git diff --check` is silent.
 
 - [ ] **Step 5: Run the Docker/device smoke matrix**
 
-Start the global stack from `/home/alp/alp-dev/glbl-cai-core-nestle-waters-tr` using its documented Docker Compose workflow. Configure device-reachable `EXPO_PUBLIC_CAI_FRONTEND_URL` and `EXPO_PUBLIC_CAI_API_BASE_URL`, then run `npx expo start --clear` in this repository.
+Status at final branch review: not completed because the required live environment was unavailable. Keep this step pending even after automated verification succeeds.
+
+Use a global checkout/deployment of `feat/native-client-actions` at `4bb5772` or a merged descendant. Run `git merge-base --is-ancestor 4bb5772 HEAD` in that checkout, then start its Docker Compose stack and Vite frontend. Deploy or check out the global producer/dispatcher revision before this native host. Configure a device-reachable `EXPO_PUBLIC_CAI_FRONTEND_URL` on port 5174, leave `EXPO_PUBLIC_CAI_API_BASE_URL` blank for the same-origin proxy, and run `npx expo start --clear` in this repository.
 
 Verify on a device/emulator:
 
-1. the global frontend loads directly and authenticates through its own `AuthProvider`;
-2. a lowercase action without `case_id` opens `/main-page` immediately and shows `Not provided`;
-3. a new action with a CRM incident ID opens `/main-page` and displays that exact ID;
-4. repeated delivery before unmount does not stack or replace twice;
-5. `Back to chat` returns to the chat tab;
-6. same-origin links stay in the WebView, external HTTP(S)/telephone/email links open externally, and unsupported schemes remain blocked;
-7. re-entering chat/restoring history does not redirect from an old message.
+1. the current Erikli `auth.enabled: false` frontend loads directly without login;
+2. conversation REST and SSE work without login;
+3. a lowercase action without `case_id` opens `/main-page` immediately and shows `Not provided`;
+4. a new action with a CRM incident ID opens `/main-page` and displays that exact ID;
+5. repeated delivery before unmount does not stack or replace twice;
+6. `Back to chat` returns to the chat tab;
+7. same-origin links stay in the WebView, external HTTP(S)/telephone/email links open externally, and unsupported schemes remain blocked;
+8. re-entering chat/restoring history does not redirect from an old message.
+
+Do not add an AuthProvider login requirement to this smoke. Auth-enabled Expo hosting needs a separate design and test for the system-browser/deep-link callback and WebView session handoff.
 
 - [ ] **Step 6: Commit maintained documentation**
 
 ```bash
 git add README.md CLAUDE.md .planning/PROJECT.md .planning/REQUIREMENTS.md \
   .planning/ROADMAP.md .planning/STATE.md .planning/codebase
-git commit -m "docs(chat-test): document caicore native navigation"
+git commit -m "docs(chat-test): align cross-repo smoke contract"
 ```
 
 - [ ] **Step 7: Review the final repository state**
@@ -926,4 +948,4 @@ git status --short --branch
 git log --oneline -6
 ```
 
-Expected: the worktree is clean, package/app version remains `1.0.0` because this repository has no changelog or release-version workflow, and the five planned commits are present.
+Expected: the worktree is clean, package/app version remains `1.0.0` because this repository has no changelog or release-version workflow, and the planned implementation plus review-reconciliation commits are present.

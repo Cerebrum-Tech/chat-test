@@ -5,16 +5,20 @@
 - [x] RUNTIME-01: EXPO_PUBLIC_CAI_FRONTEND_URL is the direct WebView source.
 - [x] RUNTIME-02: EXPO_PUBLIC_CAI_API_BASE_URL is optional and maps only to window.__CAI_API_BASE_URL__.
 - [x] RUNTIME-03: EXPO_PUBLIC_CAI_USER_ID, EXPO_PUBLIC_CAI_USER_NAME, EXPO_PUBLIC_CAI_LANGUAGE, and EXPO_PUBLIC_CAI_COUNTRY map only to allowlisted public context properties.
-- [x] RUNTIME-04: Unsupported context properties are discarded and serialized values are JSON-escaped.
+- [x] RUNTIME-04: Unsupported context property names are discarded and serialized allowed values are JSON-escaped.
 - [x] RUNTIME-05: The native host injects no authentication credential or token.
 - [x] RUNTIME-06: Device and emulator configuration uses a host-resolvable address.
+- [x] RUNTIME-07: Allowed public string values are caller-controlled; allowlisting does not detect sensitive content inside them.
 
 ## Frontend ownership
 
 - [x] WEB-01: The global Vite frontend loads directly, without a generated wrapper.
-- [x] WEB-02: The frontend AuthProvider remains the authentication owner.
+- [x] WEB-02: If authentication is enabled, the frontend AuthProvider remains the only token owner.
 - [x] WEB-03: The frontend owns conversation creation/history REST calls and live SSE consumption.
 - [x] WEB-04: Native actions originate from current live frontend delivery, not restored or refetched history.
+- [x] WEB-05: The documented smoke for the current Erikli `auth.enabled: false` channel targets direct load and REST/SSE without login.
+- [x] WEB-06: Auth-enabled Expo hosting is unsupported until a separately designed and tested system-browser/deep-link callback preserves WebView auth-result/session context.
+- [x] WEB-07: Complete-stack/live-action guidance requires global `feat/native-client-actions` at `4bb5772` or a merged descendant before this host is rolled out.
 
 ## Native action
 
@@ -35,6 +39,7 @@
 - [x] URL-04: An invalid configured frontend origin blocks navigation.
 - [x] CACHE-01: WebView document caching is disabled.
 - [x] CACHE-02: DOM storage remains enabled for the frontend session.
+- [x] CACHE-03: `mixedContentMode="compatibility"` and `thirdPartyCookiesEnabled={true}` remain intentional current settings and documented production-hardening concerns.
 
 ## Quality
 
@@ -44,3 +49,4 @@
 - [x] TEST-04: TypeScript strict checking and Expo lint are runnable package scripts.
 - [x] TEST-05: Expo public config and Android export are part of verification.
 - [x] DOC-01: Maintained documentation describes current behavior and excludes archived phase records from active guidance.
+- [ ] TEST-06: Live Docker/device smoke remains incomplete because the required environment was unavailable.
