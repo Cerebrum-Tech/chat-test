@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
 import WebView, { WebViewMessageEvent } from 'react-native-webview';
 import { buildWebViewBootstrap } from '../services/webViewBootstrap';
+import { classifyWebViewUrl } from '../services/webViewUrlPolicy';
 import { ChatWebViewProps, WebViewMessage } from '../types/webview';
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
@@ -44,26 +45,16 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
     }
   };
 
-  // Intercept navigations to open external links in the system browser
-  const handleShouldStartLoadWithRequest = (request: any) => {
-    try {
-      const url: string = request?.url || '';
-      if (!url) return true;
-      const isHttp = /^https?:\/\//i.test(url);
-      const isDataOrAbout = /^(about:blank|data:|blob:)/i.test(url);
-      if (!isHttp || isDataOrAbout) return true;
-      const extractHost = (u: string) => u.replace(/^https?:\/\//i, '').split('/')[0];
-      const baseHost = extractHost(frontendUrl);
-      const urlHost = extractHost(url);
-      if (baseHost !== urlHost) {
-        Linking.openURL(url).catch(err => console.error('Failed to open URL:', err));
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.warn('onShouldStartLoadWithRequest guard failed, allowing navigation', e);
-      return true;
+  const handleShouldStartLoadWithRequest = (request: { url?: string }) => {
+    const url = request.url ?? '';
+    const decision = classifyWebViewUrl(url, frontendUrl);
+    if (decision === 'allow') return true;
+    if (decision === 'open-external') {
+      void Linking.openURL(url).catch(() => {
+        console.warn('External URL could not be opened');
+      });
     }
+    return false;
   };
 
   return (
@@ -76,6 +67,8 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         javaScriptEnabled={true}
         domStorageEnabled={true}
+        cacheEnabled={false}
+        cacheMode="LOAD_NO_CACHE"
         startInLoadingState={true}
         bounces={false}
         scrollEnabled={true}
@@ -83,14 +76,8 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
         thirdPartyCookiesEnabled={true}
         mixedContentMode="compatibility"
         style={styles.webview}
-        onError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.error('❌ WebView error:', nativeEvent);
-        }}
-        onHttpError={(syntheticEvent) => {
-          const { nativeEvent } = syntheticEvent;
-          console.error('❌ WebView HTTP error:', nativeEvent);
-        }}
+        onError={() => console.warn('WebView load failed')}
+        onHttpError={() => console.warn('WebView HTTP request failed')}
         onLoadStart={() => {
           console.log('🔄 WebView loading started');
         }}
