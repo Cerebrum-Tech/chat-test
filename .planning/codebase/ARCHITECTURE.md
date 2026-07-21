@@ -1,143 +1,95 @@
 # Architecture
 
-**Analysis Date:** 2026-04-05
+**Updated:** 2026-07-21
 
-## Pattern Overview
+## Overview
 
-**Overall:** React Native (Expo) mobile app with file-based routing and an embedded WebView that bridges a Chatwoot chat widget to native navigation.
+The application is an Expo Router native shell around the global CAICore Vite frontend. The boundary is deliberately narrow: bootstrap public context before the page loads, enforce URL policy, parse one bridge action, and route to one native screen.
 
-**Key Characteristics:**
-- File-based routing via `expo-router` — screens are defined by filesystem structure under `app/`
-- Thin screen layer delegates WebView message processing to a dedicated service class
-- Bidirectional message bridge: React Native injects JavaScript into the WebView; the WebView posts structured messages back via `ReactNativeWebView.postMessage`
-- Platform-adaptive UI using dark/light theming with a `useThemeColor` hook
+The browser application owns authentication, conversations REST calls, SSE ingestion, message rendering, and the rule that only newly ingested live actions are posted. The native application owns the WebView container and native routing.
 
-## Layers
+## Runtime layers
 
-**Routing / Screen Layer:**
-- Purpose: Define navigable screens; own top-level state for the screen lifecycle
-- Location: `app/` and `app/(tabs)/`
-- Contains: Screen components (`chat.tsx`, `index.tsx`, `explore.tsx`), layout files (`_layout.tsx`)
-- Depends on: `components/`, `services/`, `types/`
-- Used by: `expo-router` file-system router
+### Screens
 
-**Component Layer:**
-- Purpose: Reusable, presentational React Native components
-- Location: `components/` and `components/ui/`
-- Contains: `ChatWebView.tsx` (WebView shell + injected JS), `ConfirmationModal.tsx`, themed primitives (`ThemedText`, `ThemedView`), platform UI helpers (`IconSymbol`, `TabBarBackground`, `HapticTab`)
-- Depends on: `types/`, `constants/`, `hooks/`
-- Used by: Screen layer
+Location: app/
 
-**Service Layer:**
-- Purpose: Business logic for processing WebView messages, maintaining a message log, and dispatching typed callbacks
-- Location: `services/`
-- Contains: `WebViewMessageHandler.ts` (class-based, instantiated via `useRef` in screens)
-- Depends on: `types/`
-- Used by: Screen layer (`app/(tabs)/chat.tsx`)
+- app/_layout.tsx declares the root stack, including main-page.
+- app/(tabs)/_layout.tsx declares Home, Chat, and Explore tabs.
+- app/(tabs)/chat.tsx renders ChatWebView and performs one immediate route replacement.
+- app/main-page.tsx displays the optional incident ID and returns to chat.
 
-**Types Layer:**
-- Purpose: Shared TypeScript interfaces for the WebView message protocol
-- Location: `types/`
-- Contains: `webview.ts` — `WebViewMessage`, `GotoPageMessage`, `ChatWebViewProps`
-- Depends on: nothing
-- Used by: all layers
+Screens depend on components, service outputs, and shared types. They do not parse raw bridge JSON or classify URLs.
 
-**Constants / Hooks Layer:**
-- Purpose: App-wide theming values and React hooks
-- Location: `constants/`, `hooks/`
-- Contains: `Colors.ts` (light/dark palettes), `useColorScheme.ts`, `useThemeColor.ts`
-- Depends on: nothing
-- Used by: Component layer, layout files
+### WebView component
 
-## Data Flow
+Location: components/ChatWebView.tsx
 
-**Inbound WebView Message (Chatwoot widget → React Native):**
+ChatWebView:
 
-1. Chatwoot widget (running inside `ChatWebView` HTML) fires `window.$chatwoot` events or intercepts back-button clicks
-2. Injected JavaScript calls `safePostMessage({ Process, Data })` which calls `window.ReactNativeWebView.postMessage(JSON.stringify(...))`
-3. `ChatWebView.handleWebViewMessage` (in `components/ChatWebView.tsx`) receives the raw `WebViewMessageEvent`, parses JSON, switches on `message.Process`
-4. The parsed `WebViewMessage` is passed up via the `onMessage` prop callback to the screen
-5. `ChatScreen` (`app/(tabs)/chat.tsx`) delegates to `WebViewMessageHandler.handleMessage()` (service class held in `useRef`)
-6. The handler invokes the appropriate typed callback (`onGotoPage`, `onChatMessage`, etc.) and appends to its internal `messageLog`
-7. `onGotoPage` sets `pendingNavigation` state and opens `ConfirmationModal` for user confirmation
+- reads the six supported Expo environment fields;
+- loads EXPO_PUBLIC_CAI_FRONTEND_URL directly;
+- injects the bootstrap string before page content runs;
+- delegates raw bridge parsing to services/navigationAction.ts;
+- delegates URL decisions to services/webViewUrlPolicy.ts;
+- opens supported external links with React Native Linking;
+- disables document caching and retains DOM storage.
 
-**Outbound Navigation Confirmation:**
+### Pure policy services
 
-1. User confirms in `ConfirmationModal`
-2. `handleConfirmNavigation` in `chat.tsx` receives `pendingNavigation` and executes native navigation (currently `console.log` stub — actual router call to be implemented)
+Location: services/
 
-**Theme Application:**
+- webViewBootstrap.ts projects only apiBaseUrl, userId, userName, language, and country into a safe serialized script.
+- webViewUrlPolicy.ts converts a requested URL and configured frontend URL into allow, open-external, or block.
+- navigationAction.ts parses the exact lowercase envelope and returns a typed /main-page route request or null.
 
-1. `RootLayout` (`app/_layout.tsx`) reads `useColorScheme`, wraps the app in `@react-navigation/native` `ThemeProvider`
-2. Themed components call `useThemeColor` which reads from `constants/Colors.ts`
+These functions are framework-independent and directly unit tested.
 
-**State Management:**
-- No global state store. All state is local React `useState` within individual screen components.
-- `WebViewMessageHandler` instance is persisted across renders via `useRef` in `chat.tsx`.
+### Shared contracts
 
-## Key Abstractions
+Location: types/webview.ts
 
-**WebViewMessage protocol:**
-- Purpose: Typed envelope for all messages between the Chatwoot widget and React Native
-- Examples: `types/webview.ts`
-- Pattern: `{ Process: string, Data: any }` — discriminated by `Process` values: `'GotoPage'`, `'ChatMessage'`, `'Log'`, `'Error'`
+The type module defines the exact navigation envelope, the native route request, and ChatWebView props. It has no runtime side effects.
 
-**ChatWebView:**
-- Purpose: Encapsulates the WebView shell, injects the Chatwoot SDK HTML, registers JavaScript handlers, and intercepts navigation requests to route external links via `Linking`
-- Examples: `components/ChatWebView.tsx`
-- Pattern: Functional component with `useRef<WebView>` for imperative access; reads env vars directly from `process.env.EXPO_PUBLIC_*`
+## Startup flow
 
-**WebViewMessageHandler (service class):**
-- Purpose: Stateful message dispatcher; maintains a capped log of the last 100 messages and provides `getMessageHistory()` / `getMessageStats()` for debugging
-- Examples: `services/WebViewMessageHandler.ts`
-- Pattern: Plain TypeScript class instantiated once per screen via `useRef`
+1. Expo Router mounts app/_layout.tsx and the tab navigator.
+2. The Chat tab mounts ChatWebView.
+3. ChatWebView builds injectedJavaScriptBeforeContentLoaded.
+4. The script optionally assigns window.__CAI_API_BASE_URL__ and assigns window.__CHAT_BACKEND_CONTEXT__ with allowlisted public values.
+5. The WebView requests the configured global Vite frontend URL directly.
+6. The frontend AuthProvider owns authentication and the frontend uses REST plus SSE for conversations.
 
-**Themed primitives:**
-- Purpose: `ThemedText` and `ThemedView` automatically apply light/dark colors from the palette
-- Examples: `components/ThemedText.tsx`, `components/ThemedView.tsx`
-- Pattern: Wrap native RN primitives; accept `lightColor`/`darkColor` overrides; fall back to `useThemeColor`
+The native script never supplies a token or authentication object.
 
-## Entry Points
+## Navigation flow
 
-**App Bootstrap:**
-- Location: `app/_layout.tsx`
-- Triggers: Expo Router mounts this as the root Stack navigator
-- Responsibilities: Load fonts, apply theme provider, define root stack screens
+1. The live frontend posts an exact lowercase navigation envelope through window.ReactNativeWebView.
+2. ChatWebView receives the current onMessage event.
+3. parseNavigationRequest validates exact keys, values, and case_id type.
+4. ChatWebView emits a typed MainPageNavigationRequest.
+5. ChatScreen ignores the callback if a replacement is already in flight.
+6. ChatScreen immediately calls router.replace for /main-page.
+7. MainPage displays the exact nonblank case_id or Not provided.
+8. Back to chat calls router.replace for /(tabs)/chat.
 
-**Tab Navigation:**
-- Location: `app/(tabs)/_layout.tsx`
-- Triggers: Root Stack renders the `(tabs)` group
-- Responsibilities: Configure three tab screens (Home, Chat, Explore) with icons and haptic feedback
+There is no native confirmation stage and no native message-history store. Re-entering chat mounts a new WebView; restored browser history is not interpreted by the native host.
 
-**Chat Screen (primary feature):**
-- Location: `app/(tabs)/chat.tsx`
-- Triggers: User taps the Chat tab
-- Responsibilities: Render `ChatWebView`, manage visibility toggle, own `WebViewMessageHandler` instance, handle navigation confirmation flow
+## URL flow
 
-**404 Handler:**
-- Location: `app/+not-found.tsx`
-- Triggers: `expo-router` navigates to an unrecognised route
-- Responsibilities: Display error message and link back to home
+1. The WebView asks whether a URL should load.
+2. classifyWebViewUrl parses both the configured frontend URL and the request.
+3. Same-origin HTTP(S) returns allow.
+4. Cross-origin HTTP(S), tel, and mailto return open-external.
+5. Invalid input and every other scheme return block.
+6. ChatWebView opens only open-external decisions through Linking and returns false for every external or blocked request.
 
-## Error Handling
+Origin comparison includes scheme, hostname, and effective port.
 
-**Strategy:** Local, per-component with `console.error` logging; surface errors to users via `Alert.alert`.
+## Cache and session boundary
 
-**Patterns:**
-- `ChatWebView` wraps `JSON.parse` in try/catch and logs raw message on failure
-- `WebViewMessageHandler.handleMessage` wraps the entire dispatch in try/catch, marks the log entry as `handled: false` on exception
-- WebView load errors (`onError`, `onHttpError`) log to console
-- External link failures (`Linking.openURL`) log via `console.error`
-- Chatwoot widget errors are forwarded as `Process: 'Error'` messages back to the native layer
+cacheEnabled=false and cacheMode=LOAD_NO_CACHE prevent document-cache reuse. incognito mode is not enabled. domStorageEnabled=true allows the frontend to maintain its current browser session and AuthProvider state while mounted.
 
-## Cross-Cutting Concerns
+## Error and logging boundary
 
-**Logging:** `console.log` / `console.error` throughout; no structured logging library. `WebViewMessageHandler` keeps an in-memory ring buffer (100 entries) accessible via `getMessageHistory()`.
-
-**Validation:** None beyond TypeScript types; `WebViewMessage.Data` is typed `any`.
-
-**Authentication:** Chatwoot user identity set via `window.$chatwoot.setUser()` and `setCustomAttributes()` inside injected JS, sourced from `EXPO_PUBLIC_*` env vars at build time.
-
----
-
-*Architecture analysis: 2026-04-05*
+Pure policy functions return null or block for untrusted input. Native failures emit fixed diagnostic text only. URLs, environment values, identities, credentials, raw bridge messages, and case_id values are not logged.

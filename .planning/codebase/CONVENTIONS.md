@@ -1,149 +1,83 @@
-# Coding Conventions
+# Conventions
 
-**Analysis Date:** 2026-04-05
+**Updated:** 2026-07-21
 
-## Naming Patterns
+## TypeScript and formatting
 
-**Files:**
-- React components: PascalCase (e.g., `ChatWebView.tsx`, `ConfirmationModal.tsx`, `ThemedText.tsx`)
-- Hooks: camelCase prefixed with `use` (e.g., `useColorScheme.ts`, `useThemeColor.ts`)
-- Services/classes: PascalCase (e.g., `WebViewMessageHandler.ts`)
-- Type definition files: camelCase (e.g., `webview.ts`)
-- Constants: camelCase (e.g., `Colors.ts`)
-- Platform-specific files: `filename.ios.tsx` (e.g., `IconSymbol.ios.tsx`, `TabBarBackground.ios.tsx`, `useColorScheme.web.ts`)
+- TypeScript strict mode is required.
+- Use two-space indentation.
+- Use single quotes in TypeScript.
+- Use trailing commas for multiline objects, arrays, parameters, and imports.
+- Prefer short guard clauses over deep nesting.
+- Keep pure decisions in exported functions that return typed values.
+- Avoid any unless an external test/mock boundary requires it.
+- Use the @/ alias for stable project-root imports and relative imports for nearby feature files.
 
-**Components:**
-- Named exports using `const` + `React.FC<Props>` for reusable components: `export const ChatWebView: React.FC<ChatWebViewProps>`
-- Default exports for screens and layouts: `export default function ChatScreen()`
-- Reusable/shared components always use named exports
+## Naming
 
-**Functions:**
-- Event handlers: `handle` prefix (e.g., `handleWebViewMessage`, `handleConfirmNavigation`, `handleCancelNavigation`)
-- Toggle functions: `toggle` prefix (e.g., `toggleWebView`)
-- Getter functions: `get` prefix (e.g., `getMessageHistory`, `getMessageStats`)
-- Utility helpers: descriptive verb names (e.g., `hideBubblePermanently`, `overrideBackButton`)
+- Expo Router screens and layouts use default exports.
+- Reusable components use named exports and component-style file names, such as ChatWebView.tsx.
+- Pure service modules use descriptive camel-case file names, such as navigationAction.ts and webViewUrlPolicy.ts.
+- Interfaces and type aliases use descriptive type names without an I prefix.
+- Event handlers start with handle.
+- Boolean refs and state describe their condition, such as navigationInFlight.
+- Platform variants use suffixes such as .ios.tsx and .web.ts.
 
-**Variables:**
-- Local variables and state: camelCase (e.g., `isVisible`, `showConfirmModal`, `pendingNavigation`)
-- Style constants: camelCase (e.g., `styles`, `tintColorLight`, `tintColorDark`)
+Bridge naming is a wire contract, not a TypeScript naming preference. Its key names are lowercase and case-sensitive: output_type, process, data, page_name, and case_id.
 
-**Types and Interfaces:**
-- Interfaces: PascalCase, no `I` prefix (e.g., `WebViewMessage`, `ChatWebViewProps`, `ConfirmationModalProps`)
-- Type aliases: PascalCase (e.g., `ThemedTextProps`)
-- Interface type extension: `Props` suffix (e.g., `ChatWebViewProps`, `ConfirmationModalProps`, `ThemedTextProps`)
+## Module boundaries
 
-**Message Protocol Fields:**
-- WebView message fields use PascalCase: `Process`, `Data`, `PageName`, `CaseId`
-- This is a deliberate choice for the inter-process protocol, not a general convention
+- Screens compose components and invoke typed navigation.
+- ChatWebView owns WebView props and delegates deterministic logic.
+- services contains bootstrap projection, raw bridge parsing, and URL classification.
+- types contains shared boundary shapes.
+- Pure service modules do not import React Native or Expo Router.
+- Do not put authentication, conversation REST, or SSE clients in the native host; those belong to the global frontend.
 
-## Code Style
+## Environment and security
 
-**Formatting:**
-- No Prettier config file present; relies on editor defaults and ESLint auto-fix
-- Indentation: 2 spaces
-- Quotes: single quotes for imports, template literals for dynamic strings
-- Trailing commas: used in multi-line object/array literals
+- Read only the six documented EXPO_PUBLIC_CAI_* fields.
+- Treat every Expo public field as user-visible configuration.
+- Inject only window.__CAI_API_BASE_URL__ and allowlisted window.__CHAT_BACKEND_CONTEXT__ properties.
+- Do not inject or log authentication credentials.
+- JSON-serialize browser values; never concatenate unescaped input into JavaScript.
+- Use fixed warning text. Do not log raw messages, URLs, identity, or route params.
 
-**Linting:**
-- ESLint via `eslint.config.js` using `eslint-config-expo/flat`
-- Expo's recommended ruleset applied
-- `dist/*` directory ignored
-- No custom rules beyond Expo defaults
+## Bridge parsing
 
-**TypeScript:**
-- Strict mode enabled (`"strict": true` in `tsconfig.json`)
-- Path alias `@/*` maps to project root (e.g., `import { Colors } from '@/constants/Colors'`)
-- Type `any` is used in several places in service callbacks (`onChatMessage: (messageData: any)`, `style?: any`)
+- Parse raw input inside try/catch.
+- Require the exact top-level and data key sets.
+- Require output_type=navigation, process=GotoPage, and page_name=MainPage.
+- Reject extra properties and unknown values.
+- Accept case_id only as a string.
+- Use trim only to determine whether case_id is blank; preserve a nonblank value exactly.
+- Return null for every unsupported input.
+- Map through an explicit route allowlist. Never accept an arbitrary native pathname.
 
-## Import Organization
+## Navigation
 
-**Order (observed pattern):**
-1. React and React Native core (`import React`, `import { ... } from 'react-native'`)
-2. Third-party packages (`import WebView from 'react-native-webview'`)
-3. Internal components via relative or `@/` alias paths
-4. Types (`import { WebViewMessage } from '../types/webview'`)
+- Use router.replace for the bridge destination and Back to chat.
+- Route immediately after validation.
+- Suppress callbacks after the first replacement while the chat screen is still mounted.
+- Do not add a confirmation stage or persist received bridge messages.
 
-**Path Aliases:**
-- `@/*` resolves to project root — used in shared/utility imports
-- Relative paths (`../`, `../../`) used for direct cross-folder imports in screens and examples
+## URL and WebView policy
 
-## Error Handling
+- Compare parsed URL origins, not hostname strings.
+- Keep valid same-origin HTTP(S) inside the WebView.
+- Send only cross-origin HTTP(S), tel, and mailto through Linking.
+- Block malformed and unsupported schemes by default.
+- Keep cacheEnabled=false, cacheMode=LOAD_NO_CACHE, and domStorageEnabled=true unless a reviewed requirement changes the session model.
 
-**Patterns:**
-- `try/catch` wrapping JSON parsing of WebView messages in `components/ChatWebView.tsx`
-- `try/catch` with `console.error` fallback in `services/WebViewMessageHandler.ts`
-- `Linking.openURL(...).catch(err => console.error(...))` for external URL opening
-- Guard clause pattern with early return: `if (!url) return true`
-- Errors surfaced to user via `Alert.alert('WebView Error', errorData.error)` in `app/(tabs)/chat.tsx`
-- Silent fallback in navigation interception: `catch (e) { console.warn(...); return true; }`
+## Tests
 
-## Logging
+- Name Jest files *-test.ts or *-test.tsx under __tests__.
+- Unit-test pure services with table-driven cases where policy inputs form a matrix.
+- Component-test WebView wiring and Expo Router calls with narrow mocks.
+- Assert rejected input as well as accepted input.
+- Run npm test -- --runInBand, npm run typecheck, and npm run lint before commit.
+- Run Expo public config and Android export for host-level changes.
 
-**Framework:** `console` (native browser/RN console)
+## Documentation
 
-**Patterns:**
-- Emoji prefixes used to visually categorize log types in console output:
-  - `📥` incoming messages
-  - `🚀` navigation events
-  - `💬` chat messages
-  - `❌` errors
-  - `✅` success/completion
-  - `⚠️` warnings
-  - `🔄` loading states
-- All significant events are logged with structured objects including `timestamp: new Date().toISOString()`
-- Debug logs are left in production code — no log level gating
-
-## Comments
-
-**When to Comment:**
-- Inline comments explaining non-obvious logic (e.g., `// Netflix dark background`, `// Keep only last 100 messages to prevent memory issues`)
-- Section separator comments for major code blocks within a file (e.g., `// Inject ReactNativeWebView before content loads`)
-- JSDoc blocks used only in example files (`examples/ChatWebViewExample.tsx`) not in production components
-
-**Inline Code Comments:**
-- Used for hardcoded values: `backgroundColor: '#141414', // Netflix dark background`
-- Used to explain workarounds and strategies in the back-button detection code
-
-## Function Design
-
-**Size:** Functions are generally medium-sized; `handleWebViewMessage` in `ChatWebView.tsx` is larger due to inline HTML generation
-
-**Parameters:** Props destructured at function signature level for components; callback objects used for message handlers
-
-**Return Values:**
-- React components return JSX
-- Event handlers return `void` or boolean (for `onShouldStartLoadWithRequest`)
-- Service methods return data copies with spread: `return [...this.messageLog]`
-
-## Component Design
-
-**Props Pattern:**
-- Props defined as TypeScript interfaces in the same file or in `types/webview.ts`
-- Optional props use `?` (e.g., `onMessage?`, `style?`)
-- Default prop values set via destructuring defaults (e.g., `confirmText = 'Confirm'`)
-
-**Styling:**
-- All styles defined with `StyleSheet.create({})` at the bottom of each file
-- Style objects named `styles` consistently
-- Hardcoded hex color values — no design token system (colors used: `#141414`, `#e50914`, `#333`, `#222`, `#666`, `#999`, `#fff`)
-- Style composition via array spread: `style={[styles.button, styles.primaryButton]}`
-
-**State Management:**
-- Local `useState` for UI state within screens
-- `useRef` for stable class instances: `const messageHandler = useRef(new WebViewMessageHandler()).current`
-- No global state management (no Redux, Zustand, Context API)
-
-## Module Design
-
-**Exports:**
-- Screens: default export
-- Reusable components: named export
-- Hooks: named export
-- Services: named class export (`export class WebViewMessageHandler`)
-- Types: named interface exports
-
-**Barrel Files:** Not used — all imports are direct file imports
-
----
-
-*Convention analysis: 2026-04-05*
+Maintained guidance lives in README.md, CLAUDE.md, .planning top-level project documents, and .planning/codebase. Files below .planning/phases/01-migration are immutable historical records unless a separate archival correction is explicitly requested.

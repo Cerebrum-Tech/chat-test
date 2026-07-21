@@ -1,112 +1,63 @@
-# Technology Stack
+# Technology stack
 
-**Analysis Date:** 2026-04-05
-
-## Languages
-
-**Primary:**
-- TypeScript ~5.8.3 - All application source files (`.ts`, `.tsx`)
-- JavaScript - Build scripts (`scripts/reset-project.js`), ESLint config (`eslint.config.js`)
-
-**Secondary:**
-- HTML/CSS - Inline in `components/ChatWebView.tsx` (Chatwoot widget host page generated at runtime)
+**Updated:** 2026-07-21
 
 ## Runtime
 
-**Environment:**
-- Node.js v24.11.0 (detected on host machine; no `.nvmrc` or `.node-version` pinned)
+- Node.js with npm and package-lock.json.
+- Expo SDK ~53.0.20.
+- React 19.0.0.
+- React Native 0.79.5.
+- TypeScript ~5.8.3 in strict mode.
 
-**Package Manager:**
-- npm
-- Lockfile: `package-lock.json` present
+No Node version file is committed. Use an actively supported Node release compatible with Expo SDK 53 and npm ci.
 
-## Frameworks
+## Navigation and native UI
 
-**Core:**
-- React 19.0.0 - UI component model
-- React Native 0.79.5 - Cross-platform mobile runtime
-- Expo ~53.0.20 - Managed workflow, native module access, build tooling
+- expo-router ~5.1.4 provides file-based routing and the expo-router/entry application entry.
+- @react-navigation/native ^7.1.6 and @react-navigation/bottom-tabs ^7.3.10 support the root stack and tabs.
+- react-native-screens, react-native-safe-area-context, react-native-gesture-handler, and react-native-reanimated support native navigation and layout.
+- Expo UI packages provide fonts, splash screen, status bar, haptics, blur, images, symbols, and system UI.
 
-**Routing:**
-- expo-router ~5.1.4 - File-based routing; entry point is `expo-router/entry` (see `package.json` `main` field)
-- @react-navigation/native ^7.1.6 - Navigation primitives (used by expo-router)
-- @react-navigation/bottom-tabs ^7.3.10 - Tab bar navigator used in `app/(tabs)/_layout.tsx`
+## Web host integration
 
-**UI / Animation:**
-- react-native-reanimated ~3.17.4 - Animations
-- react-native-gesture-handler ~2.24.0 - Gesture system
-- react-native-safe-area-context 5.4.0 - Safe area insets
-- react-native-screens ~4.11.1 - Native screen containers
-- expo-blur ~14.1.5 - Blur effects
-- expo-haptics ~14.1.4 - Haptic feedback
-- expo-image ~2.4.0 - Optimised image component
-- @expo/vector-icons ^14.1.0 - Icon sets
-- expo-symbols ~0.4.5 - SF Symbols (iOS)
+- react-native-webview 13.13.5 loads the global Vite frontend directly.
+- React Native Linking opens supported external URLs.
+- injectedJavaScriptBeforeContentLoaded supplies optional API configuration and public user context.
+- No native REST, SSE, or authentication client is installed for chat; the loaded frontend owns those capabilities.
 
-**WebView:**
-- react-native-webview 13.13.5 - Embeds the Chatwoot chat widget; core integration component at `components/ChatWebView.tsx`
+## Testing and quality
 
-**Web (browser target):**
-- react-dom 19.0.0
-- react-native-web ~0.20.0
-- Metro bundler (configured via `app.json` `web.bundler: "metro"`)
+- Jest 29.7.0.
+- jest-expo ~53.0.9.
+- @types/jest 29.5.14.
+- @testing-library/react-native 13.3.3.
+- ESLint ^9.25.0 with eslint-config-expo ~9.2.0.
+- TypeScript no-emit checking.
+- Expo public config and Android static export.
 
-**Testing:**
-- None detected
+package.json scripts:
 
-**Build/Dev:**
-- Babel @babel/core ^7.25.2 - JS transpilation
-- TypeScript strict mode with path alias `@/*` → `./*` (see `tsconfig.json`)
-- ESLint ^9.25.0 with `eslint-config-expo ~9.2.0` (flat config at `eslint.config.js`)
-- Expo CLI - `expo start`, `expo lint`
-
-## Key Dependencies
-
-**Critical:**
-- `react-native-webview` 13.13.5 - The entire Chatwoot chat integration is built on top of this; removing or upgrading requires re-testing all message bridging logic in `components/ChatWebView.tsx`
-- `expo-router` ~5.1.4 - File-based routing drives navigation; all screens live under `app/`
-- `expo-linking` ~7.1.7 - Used indirectly via `Linking.openURL()` in `components/ChatWebView.tsx` to open external URLs in the system browser
-
-**Infrastructure:**
-- `expo-font` ~13.3.2 - Loads `SpaceMono-Regular.ttf` at app start (`app/_layout.tsx`)
-- `expo-splash-screen` ~0.30.10 - Splash screen configuration
-- `expo-constants` ~17.1.7 - App metadata access
-- `expo-status-bar` ~2.2.3 - Status bar control
-- `expo-system-ui` ~5.0.10 - System UI (Android edge-to-edge)
-- `expo-web-browser` ~14.2.0 - Available but not directly invoked; `Linking` is used instead
+~~~text
+npm test -- --runInBand
+npm run typecheck
+npm run lint
+~~~
 
 ## Configuration
 
-**Environment:**
-- Runtime env vars are read via `process.env.EXPO_PUBLIC_*` in `components/ChatWebView.tsx`
-- Required variables (see `env.sample`):
-  - `EXPO_PUBLIC_CHATWOOT_WEBSITE_TOKEN`
-  - `EXPO_PUBLIC_CHATWOOT_USER_ID`
-  - `EXPO_PUBLIC_CHATWOOT_ACCESS_TOKEN`
-  - `EXPO_PUBLIC_CHATWOOT_CUSTOMER_CONNECTION_ID`
-  - `EXPO_PUBLIC_CHATWOOT_BASE_URL` (default: `https://chat.footgolflegends.com`)
-- `.env` is gitignored; `env.sample` is committed as a reference template
-- All `EXPO_PUBLIC_` vars are inlined into the client bundle at build time — they are not secret
+- app.json defines app metadata, platform configuration, expo-router, splash behavior, the chattest scheme, and the React Native New Architecture.
+- tsconfig.json extends expo/tsconfig.base, enables strict checking, and maps @/* to the project root.
+- eslint.config.js uses Expo's flat configuration and ignores dist.
+- env.sample documents the six public CAICore host fields.
+- .env is local and gitignored.
 
-**Build:**
-- `app.json` - Expo app config (name, slug, icons, plugins, scheme `chattest`, `newArchEnabled: true`)
-- `tsconfig.json` - Extends `expo/tsconfig.base`, strict mode, `@/` path alias
-- `eslint.config.js` - Flat config extending `eslint-config-expo`
+## Targets
 
-## Platform Requirements
+- Android, including edge-to-edge layout.
+- iOS, including tablet support.
+- Expo's web target for general project compatibility, though the primary feature is the native WebView host.
 
-**Development:**
-- Node.js (v24 in use; no pinned version file)
-- Expo CLI (`npx expo` or global install)
-- iOS Simulator or Android Emulator, or Expo Go app on device
-- Copy `env.sample` to `.env` and fill in Chatwoot credentials
+## Related global stack
 
-**Production:**
-- Expo managed workflow — build via `eas build` or `expo build`
-- Targets: iOS (`ios.supportsTablet: true`), Android (edge-to-edge enabled), Web (static Metro output)
-- App scheme: `chattest` (for deep linking)
-- New Architecture enabled (`newArchEnabled: true` in `app.json`)
-
----
-
-*Stack analysis: 2026-04-05*
+The global repository uses a React Vite WebFrontend, FastAPI CAICore backend, conversations REST/SSE, Cosmos persistence, a CRM tool service, and Docker Compose for local services. Those packages are external runtime dependencies of the device smoke, not dependencies imported by this native project.

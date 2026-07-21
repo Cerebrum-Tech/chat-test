@@ -1,153 +1,88 @@
-# Testing Patterns
+# Testing
 
-**Analysis Date:** 2026-04-05
+**Updated:** 2026-07-21
 
-## Test Framework
+## Framework
 
-**Runner:**
-- Not configured — no test runner is present in the project
-- No `jest.config.*`, `vitest.config.*`, or equivalent found
-- No test script in `package.json` (`scripts` contains only `start`, `android`, `ios`, `web`, `lint`, `reset-project`)
+Jest 29 runs with the jest-expo preset. React Native Testing Library renders screens and the WebView boundary. clearMocks is enabled in package.json.
 
-**Assertion Library:**
-- Not applicable — no testing library installed
+## Deterministic install and full checks
 
-**Run Commands:**
-```bash
-# No test commands available
-npm run lint    # Only quality check available
-```
+Run npm ci before tests or package checks:
 
-## Test File Organization
+~~~bash
+npm ci
+npm test -- --runInBand
+npm run typecheck
+npm run lint
+npx expo config --type public >/dev/null
+chat_test_export_dir=$(mktemp -d .expo-export.XXXXXX)
+npx expo export --platform android --output-dir "$chat_test_export_dir"
+mv "$chat_test_export_dir" /tmp/
+git diff --check
+~~~
 
-**Location:**
-- No test files exist in the codebase
-- No `*.test.*` or `*.spec.*` files found anywhere
+Do not run npm ci concurrently with Jest, TypeScript, lint, or Expo commands because it replaces node_modules.
 
-**Naming:**
-- Not applicable
+## Suite map
 
-**Structure:**
-```
-(no test directories or files present)
-```
+| Suite | Coverage |
+| --- | --- |
+| test-setup-test.ts | Expo Jest preset baseline. |
+| web-view-bootstrap-test.ts | API assignment, four public context fields, optional values, JSON escaping, allowlist projection, and absence of token data. |
+| web-view-url-policy-test.ts | Same-origin allow, cross-origin and device-link external handling, invalid URLs, invalid frontend origin, and blocked schemes. |
+| navigation-action-test.ts | Exact lowercase envelope, optional case_id, blank omission, strict keys, unknown values, bad types, and malformed JSON. |
+| chat-web-view-test.tsx | Direct source, no-cache props, URL decision wiring, external Linking, and strict onMessage emission. |
+| chat-screen-test.tsx | Immediate router.replace and repeated-callback suppression without an intermediate prompt. |
+| main-page-test.tsx | Exact incident display, Not provided empty state, and Back to chat replacement. |
 
-## Test Coverage
+## Test design
 
-**Requirements:** None enforced — no coverage configuration
+- Prefer table-driven tests for policy matrices.
+- Test both accepted and rejected untrusted input.
+- Keep service tests free of React Native mocks.
+- Mock only react-native-webview when asserting WebView props.
+- Mock only expo-router when asserting route replacement and params.
+- Preserve byte-for-byte nonblank case_id values in expectations.
+- Assert fixed behavior rather than implementation-private helpers.
 
-**Current state:** 0% test coverage across all source files
+There is no enforced coverage threshold. Passing suites do not replace device-level integration checks.
 
-## What Is Testable (But Untested)
+## Docker and device smoke
 
-**`services/WebViewMessageHandler.ts`:**
-- Pure class with no React dependencies — highest priority for unit testing
-- Methods: `handleMessage`, `getMessageHistory`, `clearMessageHistory`, `getMessageStats`
-- Switch-based message routing logic is directly testable
-- Message log ring-buffer (capped at 100) is testable
+Start the global services:
 
-**`types/webview.ts`:**
-- TypeScript interfaces — tested at compile time only via strict mode
+~~~bash
+cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr
+docker compose -f docker-compose.dev.yaml up --build
+~~~
 
-**`components/ChatWebView.tsx`:**
-- Renders a WebView with injected HTML — requires React Native testing environment
-- `handleShouldStartLoadWithRequest` URL interception logic is unit-testable in isolation
+Run WebFrontend separately and bind Vite for device access:
 
-**`components/ConfirmationModal.tsx`:**
-- Stateless presentational component — testable with React Native Testing Library
+~~~bash
+cd /home/alp/alp-dev/glbl-cai-core-nestle-waters-tr/WebFrontend
+npm ci
+npm run dev -- --host 0.0.0.0
+~~~
 
-**`hooks/useThemeColor.ts`:**
-- Custom hook with conditional logic — testable with `renderHook`
+Configure all six native environment fields with device-reachable frontend and API URLs. Android Emulator uses 10.0.2.2 for host ports. Start this host with:
 
-## Recommended Test Setup (Not Yet Implemented)
+~~~bash
+npx expo start --clear
+~~~
 
-To add testing to this project, install:
+Verify:
 
-```bash
-npx expo install jest-expo @testing-library/react-native @types/jest
-```
+1. The Vite frontend loads directly and its AuthProvider authenticates.
+2. A live action without case_id opens /main-page immediately and displays Not provided.
+3. A new live action with a CRM incident ID displays that exact ID.
+4. Repeated delivery before unmount does not stack or replace twice.
+5. Back to chat returns to the chat tab.
+6. Same-origin HTTP(S) stays internal.
+7. Cross-origin HTTP(S), telephone, and email links open externally.
+8. Malformed and unsupported schemes remain blocked.
+9. Leaving and re-entering chat or restoring REST history does not redirect from an old action.
 
-Add to `package.json`:
-```json
-{
-  "scripts": {
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
-  },
-  "jest": {
-    "preset": "jest-expo"
-  }
-}
-```
+## Limits
 
-## Recommended Test Patterns (Based on Codebase Style)
-
-**Service Unit Test Pattern:**
-```typescript
-// services/__tests__/WebViewMessageHandler.test.ts
-import { WebViewMessageHandler } from '../WebViewMessageHandler';
-
-describe('WebViewMessageHandler', () => {
-  let handler: WebViewMessageHandler;
-
-  beforeEach(() => {
-    handler = new WebViewMessageHandler();
-  });
-
-  it('routes GotoPage messages to onGotoPage callback', () => {
-    const onGotoPage = jest.fn();
-    handler.handleMessage(
-      { Process: 'GotoPage', Data: { PageName: 'AddressesScreen', CaseId: 'case-1' } },
-      { onGotoPage }
-    );
-    expect(onGotoPage).toHaveBeenCalledWith('AddressesScreen', 'case-1');
-  });
-});
-```
-
-**Component Test Pattern:**
-```typescript
-// components/__tests__/ConfirmationModal.test.tsx
-import { render, fireEvent } from '@testing-library/react-native';
-import { ConfirmationModal } from '../ConfirmationModal';
-
-describe('ConfirmationModal', () => {
-  it('calls onConfirm when confirm button pressed', () => {
-    const onConfirm = jest.fn();
-    const { getByText } = render(
-      <ConfirmationModal visible onConfirm={onConfirm} onCancel={jest.fn()} title="Test" message="Test" />
-    );
-    fireEvent.press(getByText('Confirm'));
-    expect(onConfirm).toHaveBeenCalled();
-  });
-});
-```
-
-## Test Types
-
-**Unit Tests:**
-- Recommended scope: `services/WebViewMessageHandler.ts`, URL parsing logic in `components/ChatWebView.tsx`
-- Not applicable yet
-
-**Integration Tests:**
-- Recommended scope: `app/(tabs)/chat.tsx` screen with mocked `WebViewMessageHandler`
-- Not applicable yet
-
-**E2E Tests:**
-- Framework: Not used, not configured
-- Expo supports Detox for E2E but it is not set up
-
-## Gaps and Risks
-
-**Critical untested areas:**
-
-- `services/WebViewMessageHandler.ts` — message routing logic has no coverage; regressions will be silent
-- `components/ChatWebView.tsx` — URL interception in `handleShouldStartLoadWithRequest` has branching logic with no coverage
-- Navigation flow in `app/(tabs)/chat.tsx` — state transitions (`pendingNavigation`, `showConfirmModal`) unverified
-
-**Risk level:** High — the project has no tests at all. Any refactoring of the message handler or navigation logic carries full regression risk.
-
----
-
-*Testing analysis: 2026-04-05*
+The automated suite does not launch a simulator, exercise operating-system URL handlers, authenticate against a live backend, or inspect SSE frames. Record those device observations separately for a release candidate.

@@ -1,75 +1,40 @@
-# Chat-Test Expo App — Waters Bot Migration
+# CAICore native chat host
 
-## What This Is
+## What this is
 
-An Expo (React Native) mobile app that embeds a chat interface via WebView. Currently loads the Chatwoot JS SDK inline; migrating to load the Waters Bot WebFrontend (watersbot.footgolflegends.com) directly as a URL — simpler, no inline HTML or DOM hacks needed.
+An Expo React Native application that presents the global CAICore Vite frontend inside a native WebView. It provides native tabs and a small, explicit navigation bridge without duplicating the frontend's authentication or conversation client.
 
-## Core Value
+## Core value
 
-The WebView must load the Waters Bot frontend and pass authentication context so users can chat seamlessly within the native app.
+Users can run the global web chat in a device-resolved native host and move immediately to a native MainPage screen when the live frontend emits the supported action.
 
-## Requirements
+## Validated capabilities
 
-### Validated
+- [x] Load EXPO_PUBLIC_CAI_FRONTEND_URL directly as the WebView source.
+- [x] Inject an optional API base URL and only userId, userName, language, and country as public browser context.
+- [x] Leave authentication ownership with the global frontend AuthProvider; inject no token.
+- [x] Leave conversations REST and SSE ownership with the global frontend.
+- [x] Accept an exact lowercase navigation envelope for GotoPage and MainPage.
+- [x] Replace immediately with /main-page and suppress repeat callbacks before the chat screen unmounts.
+- [x] Display an optional incident ID, otherwise Not provided.
+- [x] Replace back to the chat tab from MainPage.
+- [x] Keep same-origin HTTP(S) in the WebView, open supported external links through the operating system, and block unsupported schemes.
+- [x] Disable the WebView document cache while preserving DOM storage.
+- [x] Cover the host boundary with Jest, React Native Testing Library, TypeScript, lint, Expo config, and Android export checks.
 
-- ✓ WebView-based chat embedded in tab navigation — existing
-- ✓ Message bridge via ReactNativeWebView.postMessage (GotoPage, ChatMessage) — existing
-- ✓ External links open in system browser — existing
-- ✓ Dark-themed UI with tab-based navigation — existing
-- ✓ Chat history viewing and clearing — existing
+## Runtime boundary
 
-### Active
-
-- [ ] Replace Chatwoot env vars with Waters Bot env vars in env.sample
-- [ ] Rewrite ChatWebView.tsx to load WebFrontend URL directly (no inline HTML)
-- [ ] Inject auth context via window.__CHAT_BACKEND_AUTH__ before React app boots
-- [ ] Inject user context via window.__CHAT_BACKEND_CONTEXT__ before React app boots
-- [ ] Verify TypeScript build succeeds after migration
-
-### Out of Scope
-
-- Backend/API changes — handled by the WebFrontend and caicore backend
-- WebFrontend (watersbot.footgolflegends.com) changes — separate project
-- New features beyond the migration — just replacing the chat provider
-
-## Context
-
-- The old approach uses inline HTML with the Chatwoot JS SDK, requiring ~300 lines of DOM manipulation (bubble hiding, back button override, MutationObserver)
-- The new approach loads a deployed URL directly, reducing ChatWebView.tsx to ~90 lines
-- Auth flow: Expo injects window.__CHAT_BACKEND_AUTH__ → WebFrontend reads it → passes to caicore backend → validates against api.ceremeet.com
-- Message bridge pattern (ReactNativeWebView.postMessage) remains identical
-- Types (webview.ts), services (WebViewMessageHandler.ts), and screens (chat.tsx) require no changes
+The native host supplies public bootstrap configuration and handles native routing. The global frontend creates and reads conversations through REST, consumes live SSE messages, authenticates through AuthProvider, and ensures restored history does not post old native actions.
 
 ## Constraints
 
-- **Tech stack**: Must remain Expo/React Native with react-native-webview — existing app infrastructure
-- **Auth**: Must use Ceremeet token-based auth (type: "ceremeet") — backend requirement
-- **Compatibility**: WebFrontend expects window.__CHAT_BACKEND_AUTH__ and window.__CHAT_BACKEND_CONTEXT__ globals
+- Keep Expo, React Native, expo-router, and react-native-webview.
+- Treat every EXPO_PUBLIC_ value as visible client configuration.
+- Do not add credentials or tokens to the native bootstrap.
+- Preserve exact case-sensitive bridge keys and values.
+- Do not persist or replay received bridge actions.
+- Preserve .planning/phases/01-migration as dated historical evidence.
 
-## Key Decisions
+## Current milestone
 
-| Decision | Rationale | Outcome |
-|----------|-----------|---------|
-| Load URL directly instead of inline HTML | Eliminates ~200 lines of DOM hacks, Chatwoot SDK dependency | — Pending |
-| Inject auth via injectedJavaScriptBeforeContentLoaded | Runs before React app boots, ensuring config.ts picks up auth | — Pending |
-| Keep same message bridge protocol | No changes needed to types, services, or screens | — Pending |
-
-## Evolution
-
-This document evolves at phase transitions and milestone boundaries.
-
-**After each phase transition** (via `/gsd:transition`):
-1. Requirements invalidated? → Move to Out of Scope with reason
-2. Requirements validated? → Move to Validated with phase reference
-3. New requirements emerged? → Add to Active
-4. Decisions to log? → Add to Key Decisions
-5. "What This Is" still accurate? → Update if drifted
-
-**After each milestone** (via `/gsd:complete-milestone`):
-1. Full review of all sections
-2. Core Value check — still the right priority?
-3. Audit Out of Scope — reasons still valid?
-4. Update Context with current state
-
----
-*Last updated: 2026-04-05 after initialization*
+The global frontend host migration is implemented. Maintained documentation and verification describe the running code; archived migration records remain unchanged.

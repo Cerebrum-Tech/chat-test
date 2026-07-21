@@ -1,79 +1,49 @@
----
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-04-05T14:04:19.947Z"
-last_activity: 2026-04-05
-progress:
-  total_phases: 2
-  completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
-  percent: 100
----
+# Project state
 
-# Project State
+**Updated:** 2026-07-21
 
-## Project Reference
+**Milestone:** Global frontend native host
 
-See: .planning/PROJECT.md (updated 2026-04-05)
+**Status:** Implementation complete; maintained documentation reflects the current host
 
-**Core value:** The WebView must load the Waters Bot frontend and pass authentication context so users can chat seamlessly within the native app.
-**Current focus:** Phase 01 — migration
+## Implemented
 
-## Current Position
+- Direct loading of the global CAICore Vite frontend from EXPO_PUBLIC_CAI_FRONTEND_URL.
+- Pre-content bootstrap of optional window.__CAI_API_BASE_URL__ and allowlisted public user context.
+- Frontend-owned AuthProvider, conversations REST client, and SSE client with no native token injection.
+- Exact lowercase GotoPage/MainPage bridge parsing.
+- Immediate duplicate-safe replacement to /main-page.
+- Optional incident display with Not provided as the empty state.
+- Back to chat route replacement.
+- Same-origin, external-link, unsupported-scheme, and no-cache WebView policy.
+- Jest and React Native Testing Library suites plus typecheck and lint scripts.
 
-Phase: 2
-Plan: Not started
-Status: Executing Phase 01
-Last activity: 2026-04-05
+## Key decisions
 
-Progress: [░░░░░░░░░░] 0%
+- Expo public environment values are configuration, never secrets.
+- The native layer is a host and route boundary, not an authentication or conversation client.
+- Restored history is a frontend concern and must not replay bridge actions.
+- A bridge envelope must match the exact allowlist; permissive compatibility parsing is intentionally excluded.
+- Blank case_id values preserve navigation but produce no route param.
+- A valid action replaces rather than pushes, and Back to chat also replaces.
+- DOM storage remains available even though document caching is disabled.
 
-## Performance Metrics
+## Supported environment
 
-**Velocity:**
+The six supported fields are EXPO_PUBLIC_CAI_FRONTEND_URL, EXPO_PUBLIC_CAI_API_BASE_URL, EXPO_PUBLIC_CAI_USER_ID, EXPO_PUBLIC_CAI_USER_NAME, EXPO_PUBLIC_CAI_LANGUAGE, and EXPO_PUBLIC_CAI_COUNTRY.
 
-- Total plans completed: 2
-- Average duration: —
-- Total execution time: —
+Device URLs must address the development host. Android Emulator uses 10.0.2.2 for host services; physical devices use a reachable LAN address.
 
-**By Phase:**
+## Verification baseline
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01 | 2 | - | - |
+- npm ci is the deterministic install command.
+- npm test -- --runInBand runs the complete Jest suite.
+- npm run typecheck runs strict TypeScript checking.
+- npm run lint runs Expo ESLint.
+- npx expo config --type public validates public app configuration.
+- npx expo export --platform android validates an Android production bundle.
+- Docker plus device smoke covers live AuthProvider, REST/SSE, action, routing, URL, cache, and history behavior.
 
-**Recent Trend:**
+## Historical records
 
-- Last 5 plans: —
-- Trend: —
-
-*Updated after each plan completion*
-
-## Accumulated Context
-
-### Decisions
-
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- Load URL directly instead of inline HTML (eliminates ~200 lines of DOM hacks)
-- Inject auth via injectedJavaScriptBeforeContentLoaded (runs before React app boots)
-- Keep same message bridge protocol (no changes to types, services, or screens)
-
-### Pending Todos
-
-None yet.
-
-### Blockers/Concerns
-
-None yet.
-
-## Session Continuity
-
-Last session: 2026-04-05T12:29:54.853Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-migration/01-CONTEXT.md
+.planning/phases/01-migration is intentionally frozen. Its dated plans and outcomes are historical records and are excluded from active-document scans.
