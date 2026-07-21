@@ -17,10 +17,10 @@ export function parseNavigationRequest(raw: string): MainPageNavigationRequest |
     if (value.output_type !== 'navigation' || value.process !== 'GotoPage' || !isRecord(value.data)) return null;
     const dataKeys = 'case_id' in value.data ? ['page_name', 'case_id'] : ['page_name'];
     if (!hasExactKeys(value.data, dataKeys) || value.data.page_name !== 'MainPage') return null;
-    if ('case_id' in value.data && (typeof value.data.case_id !== 'string' || !value.data.case_id.trim())) return null;
+    if ('case_id' in value.data && typeof value.data.case_id !== 'string') return null;
     const pathname = ROUTE_MAP.GotoPage.MainPage;
-    return 'case_id' in value.data
-      ? { pathname, params: { case_id: value.data.case_id as string } }
+    return typeof value.data.case_id === 'string' && value.data.case_id.trim()
+      ? { pathname, params: { case_id: value.data.case_id } }
       : { pathname };
   } catch {
     return null;
