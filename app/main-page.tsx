@@ -1,17 +1,21 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
+import { useThemeColor } from '@/hooks/useThemeColor';
+
 export default function MainPageScreen() {
   const router = useRouter();
   const { case_id } = useLocalSearchParams<{ case_id?: string | string[] }>();
   const incidentId = Array.isArray(case_id) ? case_id[0] : case_id;
+  const backgroundColor = useThemeColor({}, 'background');
+  const textColor = useThemeColor({}, 'text');
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor }]}>
       <View style={styles.card}>
-        <Text style={styles.title}>MainPage</Text>
-        <Text style={styles.label}>Incident ID</Text>
-        <Text selectable style={styles.value}>{incidentId || 'Not provided'}</Text>
+        <Text style={[styles.title, { color: textColor }]}>MainPage</Text>
+        <Text style={[styles.label, { color: textColor }]}>Incident ID</Text>
+        <Text selectable style={[styles.value, { color: textColor }]}>{incidentId || 'Not provided'}</Text>
         <Button title="Back to chat" onPress={() => router.replace('/(tabs)/chat')} />
       </View>
     </SafeAreaView>
