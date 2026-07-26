@@ -1,32 +1,40 @@
-# CAICore native host guidance
+# Erikli native host guidance
 
 ## Project
 
-This Expo SDK 53 application is the native host for the global CAICore Vite frontend. The chat tab loads that frontend directly through react-native-webview.
+This Expo SDK 53 application is the native host for the Erikli chat widget. The chat tab loads that frontend directly through react-native-webview.
 
-The native boundary has four responsibilities:
+The native boundary has five responsibilities:
 
-1. inject the optional API URL and allowlisted public user context before frontend code runs;
-2. classify WebView navigation by URL origin and scheme;
-3. parse one exact lowercase native action;
-4. replace the native route with /main-page and provide a route back to chat.
+1. take a CRM customer id, exchange it for that customer's CereMeet token, and hold the resulting session;
+2. inject the optional API URL, the allowlisted public user context, and the session token before frontend code runs;
+3. classify WebView navigation by URL origin and scheme;
+4. parse one exact lowercase native action;
+5. replace the native route with /main-page and provide a route back to chat.
 
-The global frontend owns conversations REST requests, SSE ingestion, live-action deduplication, and rendering. The current Erikli global channel has `auth.enabled: false`, so the supported smoke path has no login. If authentication is enabled later, the global AuthProvider remains the only permitted token owner. Do not move token ownership or conversation transport into this repository, and never inject a token from the native host.
+The widget owns conversation transport and rendering, and is the only component that attaches the bearer to backend calls. Do not move conversation transport into this repository.
+
+This host does own the token, because the backend gate requires one per session and the widget has no login of its own. Ownership stops at verify-hold-inject: never persist a token, put it in a route param, log it, or send it anywhere other than `window.__CHAT_BACKEND_CONTEXT__.token`. A redirect-based identity provider is still unsupported — cross-origin HTTP(S) navigation leaves the WebView and would need a separately designed system-browser/deep-link callback.
 
 ## Environment contract
 
-env.sample defines the only six supported Expo fields:
+env.sample defines the supported Expo fields:
 
 - EXPO_PUBLIC_CAI_FRONTEND_URL: required WebView source;
 - EXPO_PUBLIC_CAI_API_BASE_URL: optional window.__CAI_API_BASE_URL__ override;
-- EXPO_PUBLIC_CAI_USER_ID: optional public userId context;
-- EXPO_PUBLIC_CAI_USER_NAME: optional public userName context;
 - EXPO_PUBLIC_CAI_LANGUAGE: optional public language context;
-- EXPO_PUBLIC_CAI_COUNTRY: optional public country context.
+- EXPO_PUBLIC_CAI_COUNTRY: optional public country context;
+- EXPO_PUBLIC_CAI_WATERS_LOGIN_KEY: required service key for the watersLogin exchange;
+- EXPO_PUBLIC_CAI_SAMPLE_USER_{1..5}_LABEL: optional login-screen display name;
+- EXPO_PUBLIC_CAI_SAMPLE_USER_{1..5}_CUSTOMER_ID: that sample user's CRM customer id.
 
-All fields are public client configuration. Never add secrets or authentication credentials to an EXPO_PUBLIC_ field. Device and emulator URLs must resolve back to the development host; Android Emulator host services use 10.0.2.2 rather than device-local localhost.
+There is no userId/userName field: identity is derived from the token server-side, and the host injects the derived `consumer_id` so a configured value can never disagree with the signed-in user. The sample-user customer ids are identifiers, not credentials.
 
-The checked-in happy path uses Vite on port 5174 and leaves EXPO_PUBLIC_CAI_API_BASE_URL blank so the frontend uses its same-origin /v1 proxy. The bootstrap allowlist discards unsupported property names, but it does not detect sensitive or token-like content inside userId, userName, language, or country; callers own the safety of those values.
+The login key is the sole exception to "no credentials in EXPO_PUBLIC_ fields", and it is a deliberate, bounded one: this is a test harness, Expo bakes the key into the bundle, and a bundle holder can then sign in as any customer id. Only the pre-production key belongs there, no build of this host may be distributed, and a production app must move the exchange behind its own backend. Add no other credential field.
+
+Expo inlines `process.env.EXPO_PUBLIC_*` through a build-time Babel transform, so every variable must be referenced as a static literal — `process.env[name]` is undefined in a bundled app. That is why services/sampleUsers.ts declares five fixed slots instead of looping.
+
+Device and emulator URLs must resolve back to the development host; Android Emulator host services use 10.0.2.2 rather than device-local localhost. The bootstrap allowlist discards unsupported property names, but it does not inspect the content of the values it does allow; callers own the safety of those.
 
 ## Bridge contract
 
@@ -59,14 +67,35 @@ components/ChatWebView.tsx disables the WebView document cache with cacheEnabled
 
 The current component intentionally retains mixedContentMode="compatibility" and thirdPartyCookiesEnabled={true}. Treat both as production-hardening concerns; do not change them without a separately designed and device-tested WebView policy.
 
+## Auth contract
+
+Sign-in is two CereMeet calls, both in `services/ceremeetAuth.ts`:
+
+`watersLogin` posts `{customer_id}` to `https://api.ceremeet.com/api/auth/watersLogin` with the service key as the bearer and returns `access_token` from the response. Its reason codes are prefixed `ceremeet_login_*` to stay distinguishable from the gate's.
+
+`verifyCereMeetUser` then calls `GET https://api.ceremeet.com/api/users/me` with the minted token and authorizes on `HTTP 200 + a user object + isWatersUser`, deriving `consumer_id` from the email local part. It is a pre-flight mirror of the backend gate (`CAICore/src/infra/external/ceremeet/widget_auth.verify_widget_user`) and its `ceremeet_api_*` reason codes are kept byte-identical to that gate's, so a failure shown at sign-in matches what the backend would have reported. Keep them in sync; add a reason code in both or neither.
+
+Do not collapse the second call away because watersLogin already returns `userInfo.isWatersUser`: verifying the minted token is what catches a token that logs in but would be refused mid-conversation.
+
+`hooks/useAuthSession.tsx` holds the session in React state only — no AsyncStorage, no SecureStore, no route param. Relaunching returns to the login screen by design.
+
+`app/(tabs)/chat.tsx` redirects to /login whenever the session is null, so the WebView is never mounted without a verified token. Do not add a bypass, a guest mode, or a default token: the backend now rejects tokenless sessions, and a bypass here would only hide that.
+
+The token reaches the widget through `injectedJavaScriptBeforeContentLoaded`, never `injectedJavaScript`, which runs after the widget has read the global. The contract is specified by the backend repository's `docs/mobile-app-widget-integration.md`.
+
 ## Code ownership
 
-- components/ChatWebView.tsx: direct Vite loading, bootstrap injection, URL enforcement, bridge event entry point;
+- components/ChatWebView.tsx: direct widget loading, bootstrap injection, URL enforcement, bridge event entry point;
+- services/ceremeetAuth.ts: the watersLogin exchange, CereMeet verification, and consumer-id derivation;
+- services/sampleUsers.ts: pure projection of the configured sample-user slots;
+- hooks/useAuthSession.tsx: in-memory session state and the sign-in/sign-out actions;
 - services/webViewBootstrap.ts: allowlisted serialization into browser globals;
 - services/webViewUrlPolicy.ts: pure URL classifier;
 - services/navigationAction.ts: pure strict bridge parser and route mapping;
-- app/(tabs)/chat.tsx: immediate one-shot route replacement;
+- app/login.tsx: sample-user and typed-customer-id sign-in;
+- app/(tabs)/chat.tsx: auth guard and immediate one-shot route replacement;
 - app/main-page.tsx: optional incident display and return-to-chat behavior;
+- types/auth.ts: session, sample-user, and verification contracts;
 - types/webview.ts: bridge and native route types;
 - __tests__/: Jest and React Native Testing Library coverage.
 
@@ -87,13 +116,15 @@ mv "$chat_test_export_dir" /tmp/
 npx expo start --clear
 ~~~
 
-Run npm ci before package checks. Complete-stack, Vite, and live-action smoke require a global checkout/deployment of `feat/native-client-actions` at `66c88d5` or a merged descendant. Run `git merge-base --is-ancestor 66c88d5 HEAD` in that checkout before starting services. Deploy the global revision first and this native host second so the action producer/dispatcher exists before the consumer.
+Run npm ci before package checks.
 
-Before a complete device smoke, copy the verified global checkout's CAICore/.env.example and WatersMCPServer/.env.example to their local .env files. CAICore requires valid NESGEN_ENDPOINT, NESGEN_CLIENT_ID, and NESGEN_CLIENT_SECRET values (or a real Key Vault plus local-container Azure credentials). WatersMCPServer requires WATERS_API_URL, WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID. Never commit populated secret files.
+Chat smoke needs the `nestle-waters-tr-go` stack (`docker compose up -d --build caicore webfrontend`), which serves both the backend and the widget. Leave its `WATERS_WIDGET_TEST_MODE` at the default `0`: setting it to `1` restores a shared bypass marker that authorizes a fixed test customer with no token, which makes the sign-in exercised here meaningless. Secrets for that stack live in its own git-ignored .env files.
 
-Create WebFrontend/.env.local with exactly one selector: VITE_AGENT_KEY=erikli is recommended for the current configuration, while WEB_ENTRY_POINT_ID=erikli is the alternative. The current Erikli target has `auth.enabled: false`; its smoke checklist targets direct load and REST/SSE without login. Leave VITE_API_BASE_URL, WEB_API_BASE_URL, and the native EXPO_PUBLIC_CAI_API_BASE_URL unset or blank for the default development path so Vite's same-origin /v1 proxy is used. A direct native API override also requires CAICore ALLOWED_ORIGINS to contain the WebView's exact frontend origin. Then use docker-compose.dev.yaml, the separately running Vite frontend, and the device-reachable EXPO_PUBLIC_CAI_FRONTEND_URL described in README.md.
+Sign-in itself needs only network access to CereMeet, the watersLogin key, and a customer id for a Waters-flagged account.
 
-Auth-enabled Expo hosting remains unsupported until a separate design and device test provide a system-browser/deep-link callback that preserves the WebView auth-result/session context. The live device smoke was not completed in this environment; do not infer it from passing automated checks.
+A direct native API override (EXPO_PUBLIC_CAI_API_BASE_URL) also requires the backend to accept the WebView's exact frontend origin.
+
+The live device smoke was not completed in this environment; do not infer it from passing automated checks.
 
 ## Documentation scope
 

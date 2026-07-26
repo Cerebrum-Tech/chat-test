@@ -1,4 +1,5 @@
 import type { StyleProp, ViewStyle } from 'react-native';
+import type { AuthSession } from './auth';
 
 export interface NavigationAction {
   output_type: 'navigation';
@@ -17,6 +18,8 @@ export type MainPageNavigationRequest = {
 };
 
 export interface ChatWebViewProps {
+  /** The signed-in session whose bearer token and identity are injected into the widget. */
+  session: AuthSession;
   onNavigationRequest?: (request: MainPageNavigationRequest) => void;
   style?: StyleProp<ViewStyle>;
 }
