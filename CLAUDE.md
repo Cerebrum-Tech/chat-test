@@ -53,7 +53,9 @@ Accept only this exact, case-sensitive shape:
 
 The parser uses an exact key allowlist. It rejects malformed input, extra keys, unknown action values, and non-string case_id values. Missing, empty, or whitespace-only case_id values map to /main-page without route params. Preserve a nonblank value byte-for-byte.
 
-Navigation is immediate. app/(tabs)/chat.tsx calls router.replace once and suppresses repeated callbacks during unmount. app/main-page.tsx displays the incident ID or Not provided and Back to chat replaces with /(tabs)/chat. Do not add a native confirmation step or persist bridge messages for replay.
+Navigation is deferred by NAVIGATION_DELAY_MS (5s), exported from app/(tabs)/chat.tsx, so the flow's closing message can be read before the route changes. The in-flight flag is claimed when the envelope arrives, not when the timer fires, so repeat deliveries during the wait are suppressed rather than queueing a second redirect; the pending timer is cleared on unmount so it cannot fire against a screen the user has already left. app/main-page.tsx displays the incident ID or Not provided and Back to chat replaces with /(tabs)/chat.
+
+The wait is not a confirmation step: it is unattended and has no prompt or cancel affordance. Do not add one, and do not persist bridge messages for replay.
 
 ## URL and cache contract
 

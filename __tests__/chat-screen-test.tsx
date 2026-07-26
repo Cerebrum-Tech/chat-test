@@ -1,7 +1,7 @@
 import React from 'react';
-import { fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render } from '@testing-library/react-native';
 
-import ChatScreen from '../app/(tabs)/chat';
+import ChatScreen, { NAVIGATION_DELAY_MS } from '../app/(tabs)/chat';
 import type { AuthSession } from '../types/auth';
 
 const mockReplace = jest.fn();
@@ -58,9 +58,23 @@ jest.mock('../components/ChatWebView', () => {
 });
 
 describe('ChatScreen', () => {
-  it('replaces the route immediately and suppresses duplicate callbacks', () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it('leaves the closing message on screen for the delay, then replaces once', () => {
     const { getByTestId, queryByText } = render(<ChatScreen />);
     fireEvent.press(getByTestId('emit-navigation'));
+
+    // The whole point of the wait: the chat is still showing while the timer runs.
+    act(() => {
+      jest.advanceTimersByTime(NAVIGATION_DELAY_MS - 1);
+    });
+    expect(mockReplace).not.toHaveBeenCalled();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    // The duplicate delivered alongside the first must not queue a second redirect.
     expect(mockReplace).toHaveBeenCalledTimes(1);
     expect(mockReplace).toHaveBeenCalledWith({
       pathname: '/main-page',
@@ -68,6 +82,18 @@ describe('ChatScreen', () => {
     });
     expect(queryByText('Navigate')).toBeNull();
     expect(queryByText('Cancel')).toBeNull();
+  });
+
+  it('drops a pending redirect when the screen unmounts first', () => {
+    const { getByTestId, unmount } = render(<ChatScreen />);
+    fireEvent.press(getByTestId('emit-navigation'));
+    unmount();
+
+    act(() => {
+      jest.advanceTimersByTime(NAVIGATION_DELAY_MS * 2);
+    });
+    // Otherwise the timer fires later and pulls the user out of wherever they went.
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   it('signs out without leaving the session on screen', () => {

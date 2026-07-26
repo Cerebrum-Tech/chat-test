@@ -1,23 +1,46 @@
 import { Redirect, useRouter } from 'expo-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
 import { ChatWebView } from '../../components/ChatWebView';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import type { MainPageNavigationRequest } from '../../types/webview';
 
+/**
+ * How long the flow's closing message stays on screen before the host leaves for
+ * MainPage. Replacing the route the instant the envelope arrived swapped that message
+ * away before it could be read, and it is the point of the whole flow.
+ */
+export const NAVIGATION_DELAY_MS = 5000;
+
 export default function ChatScreen() {
   const router = useRouter();
   const { session, signOut } = useAuthSession();
   const navigationInFlight = useRef(false);
+  const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Drop a pending redirect if the screen goes away first. Without this the timer still
+  // fires after the user has navigated elsewhere and yanks them out of wherever they are.
+  useEffect(
+    () => () => {
+      if (navigationTimer.current) clearTimeout(navigationTimer.current);
+    },
+    [],
+  );
+
   const handleNavigationRequest = useCallback((request: MainPageNavigationRequest) => {
+    // Claimed up front, not when the timer fires, so repeat deliveries during the wait
+    // are still suppressed rather than queueing a second redirect.
     if (navigationInFlight.current) return;
     navigationInFlight.current = true;
-    try {
-      router.replace(request);
-    } catch {
-      navigationInFlight.current = false;
-      console.warn('Native navigation failed');
-    }
+    navigationTimer.current = setTimeout(() => {
+      navigationTimer.current = null;
+      try {
+        router.replace(request);
+      } catch {
+        navigationInFlight.current = false;
+        console.warn('Native navigation failed');
+      }
+    }, NAVIGATION_DELAY_MS);
   }, [router]);
 
   // The widget is only ever mounted with a verified token, so an unauthenticated visitor

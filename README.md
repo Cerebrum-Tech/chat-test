@@ -105,7 +105,7 @@ The accepted message is exact and case-sensitive:
 
 All key names are lowercase exactly as shown. Extra keys, unknown values, malformed JSON, and a non-string case_id are rejected. A missing or blank case_id still navigates but is omitted from the native route.
 
-An accepted action immediately calls router.replace for /main-page. A screen-lifetime guard ignores repeated delivery while the chat screen unmounts, so the action does not stack or replace twice. The destination displays the exact nonblank incident ID, or Not provided when it is absent. Back to chat replaces the route with /(tabs)/chat.
+An accepted action calls router.replace for /main-page after a 5 second wait, so the flow's closing message stays readable before the screen changes. A screen-lifetime guard ignores repeated delivery, so the action does not stack or replace twice, and a redirect still pending when the chat screen unmounts is dropped rather than firing later. The destination displays the exact nonblank incident ID, or Not provided when it is absent. Back to chat replaces the route with /(tabs)/chat.
 
 ## URL and cache policy
 
