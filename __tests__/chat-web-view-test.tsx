@@ -3,6 +3,14 @@ import { Linking, View as MockView } from 'react-native';
 import { render } from '@testing-library/react-native';
 
 import { ChatWebView } from '../components/ChatWebView';
+import type { AuthSession } from '../types/auth';
+
+const SESSION: AuthSession = {
+  token: 'ceremeet-jwt-value',
+  email: 'customer-guid@nestlewatersapp.com',
+  consumerId: 'customer-guid',
+  label: 'Sample user 1',
+};
 
 jest.mock('react-native-webview', () => ({
   __esModule: true,
@@ -20,7 +28,7 @@ describe('ChatWebView', () => {
   it('loads the frontend, disables cache, and applies URL decisions', async () => {
     process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
     const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
-    const { getByTestId } = render(<ChatWebView />);
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
     const webView = getByTestId('webview');
 
     expect(webView.props.source).toEqual({ uri: 'https://chat.example.test' });
@@ -44,7 +52,7 @@ describe('ChatWebView', () => {
     process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
     const onNavigationRequest = jest.fn();
     const { getByTestId } = render(
-      <ChatWebView onNavigationRequest={onNavigationRequest} />,
+      <ChatWebView session={SESSION} onNavigationRequest={onNavigationRequest} />,
     );
     const webView = getByTestId('webview');
 
@@ -72,5 +80,16 @@ describe('ChatWebView', () => {
       pathname: '/main-page',
       params: { case_id: 'incident-1' },
     });
+  });
+
+  it('injects the session token and derived identity before content loads', () => {
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+    const bootstrap = getByTestId('webview').props.injectedJavaScriptBeforeContentLoaded;
+
+    expect(bootstrap).toContain('"token":"ceremeet-jwt-value"');
+    expect(bootstrap).toContain('"userId":"customer-guid"');
+    // The bearer must arrive before the widget bundle reads it, hence the *Before* hook.
+    expect(getByTestId('webview').props.injectedJavaScript).toBeUndefined();
   });
 });

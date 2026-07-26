@@ -7,19 +7,25 @@ import { classifyWebViewUrl } from '../services/webViewUrlPolicy';
 import type { ChatWebViewProps } from '../types/webview';
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
+  session,
   onNavigationRequest,
   style,
 }) => {
   const webViewRef = useRef<WebView>(null);
 
   const frontendUrl = process.env.EXPO_PUBLIC_CAI_FRONTEND_URL?.trim() ?? '';
+  // Identity comes from the verified session, not from configuration: the backend derives
+  // the CRM customer from the token itself, so a stale EXPO_PUBLIC_CAI_USER_ID would only
+  // describe a different user than the one actually signed in. Locale stays configurable
+  // because the widget falls back to the device locale when it is absent.
   const injectedJavaScriptBeforeContentLoaded = buildWebViewBootstrap({
     apiBaseUrl: process.env.EXPO_PUBLIC_CAI_API_BASE_URL,
     context: {
-      userId: process.env.EXPO_PUBLIC_CAI_USER_ID || undefined,
-      userName: process.env.EXPO_PUBLIC_CAI_USER_NAME || undefined,
+      userId: session.consumerId,
+      userName: session.label,
       language: process.env.EXPO_PUBLIC_CAI_LANGUAGE || undefined,
       country: process.env.EXPO_PUBLIC_CAI_COUNTRY || undefined,
+      token: session.token,
     },
   });
 

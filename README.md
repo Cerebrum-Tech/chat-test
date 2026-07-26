@@ -1,12 +1,15 @@
-# CAICore native chat host
+# Erikli native chat host
 
-This Expo application embeds the global CAICore Vite frontend in a native WebView. The web frontend owns conversations REST calls and the conversation SSE stream. The current Erikli global channel has `auth.enabled: false`, so the smoke checklist targets direct loading and REST/SSE without a login. The native application supplies public runtime context, enforces the WebView boundary, and handles a small navigation bridge.
+This Expo application embeds the Erikli chat widget in a native WebView. The web frontend owns conversations REST calls and the conversation stream; this host authenticates the user, injects the resulting CereMeet bearer token, enforces the WebView boundary, and handles a small navigation bridge.
+
+Authentication is mandatory. The backend gate validates every session's token against CereMeet and derives the CRM customer from it, so the chat screen is reachable only after a successful sign-in.
 
 ## Prerequisites
 
 - Node.js and npm compatible with Expo SDK 53.
 - An Android emulator, iOS simulator, or device that can run Expo Go.
-- A checkout or deployment of the global CAICore `feat/native-client-actions` revision at commit `66c88d5` or a merged descendant when exercising the complete stack.
+- The CereMeet watersLogin service key, and at least one CRM customer id belonging to a Waters-flagged account.
+- A reachable deployment (or local run) of the Erikli backend and widget from the `nestle-waters-tr-go` repository.
 
 ## Install, configure, and verify
 
@@ -21,18 +24,23 @@ npm run lint
 npx expo start --clear
 ~~~
 
-Edit .env before starting Expo. The six supported fields are:
+Edit .env before starting Expo. The supported fields are:
 
 | Field | Purpose |
 | --- | --- |
-| EXPO_PUBLIC_CAI_FRONTEND_URL | Required URL loaded directly by the WebView. Point it at the global Vite frontend or its deployed equivalent. |
+| EXPO_PUBLIC_CAI_FRONTEND_URL | Required URL loaded directly by the WebView. Point it at the deployed Erikli widget or a local Vite run. |
 | EXPO_PUBLIC_CAI_API_BASE_URL | Optional backend override injected as window.__CAI_API_BASE_URL__. Omit it when the frontend should use its own same-origin/default API resolution. |
-| EXPO_PUBLIC_CAI_USER_ID | Optional public user identifier exposed in the allowlisted browser context. |
-| EXPO_PUBLIC_CAI_USER_NAME | Optional public display name exposed in the allowlisted browser context. |
-| EXPO_PUBLIC_CAI_LANGUAGE | Optional public locale, such as tr-TR. |
+| EXPO_PUBLIC_CAI_LANGUAGE | Optional public locale, such as tr-TR. Without it the widget falls back to the device locale, which answers English users in English. |
 | EXPO_PUBLIC_CAI_COUNTRY | Optional public country code, such as TR. |
+| EXPO_PUBLIC_CAI_WATERS_LOGIN_KEY | Required service key for the watersLogin exchange that mints a customer's token. |
+| EXPO_PUBLIC_CAI_SAMPLE_USER_{1..5}_LABEL | Optional display name for a sample user on the login screen. |
+| EXPO_PUBLIC_CAI_SAMPLE_USER_{1..5}_CUSTOMER_ID | The sample user's CRM customer id. A slot with a blank id is skipped. |
 
-Every EXPO_PUBLIC_ value is embedded in the client bundle. Do not put secrets, access credentials, or bearer values in these fields. The native host injects only window.__CAI_API_BASE_URL__ and the allowlisted userId, userName, language, and country properties in window.__CHAT_BACKEND_CONTEXT__. The allowlist rejects unsupported property names; it does not inspect allowed string values for token-like content, so callers remain responsible for keeping every allowed value public. The host injects no authentication object or token. If authentication is enabled in a future global configuration, the frontend AuthProvider remains the only permitted token owner.
+The customer ids are identifiers rather than credentials — the access token is minted at sign-in — and any customer id can be typed straight into the login screen instead of being configured.
+
+The login key is a credential, and Expo embeds every EXPO_PUBLIC_ value in the client bundle, so anyone holding a build can sign in as any customer id. Use the **pre-production key only**, keep .env out of git, and do not distribute a build of this host. A production app must move the watersLogin exchange behind its own backend rather than shipping the key.
+
+Restart Expo with --clear after changing .env.
 
 ## Device and emulator host resolution
 
@@ -42,91 +50,43 @@ The configured frontend URL, and any optional direct API override, must resolve 
 - Physical device: use the development machine's LAN address and ensure the firewall and service bind address permit access.
 - iOS Simulator: localhost normally resolves to the Mac host; use the LAN address when that is not true for the selected setup.
 
-The sample is immediately usable for host-browser development on Vite port 5174 and leaves the optional API override blank. For the recommended Android Emulator configuration, change only the host address to 10.0.2.2 and keep the API base blank. Browser requests then stay on the Vite origin and its /v1 proxy forwards them to the API on host port 8000:
+A deployed HTTPS widget URL resolves everywhere and needs none of the above.
 
-~~~dotenv
-EXPO_PUBLIC_CAI_FRONTEND_URL=http://10.0.2.2:5174
-EXPO_PUBLIC_CAI_API_BASE_URL=
-EXPO_PUBLIC_CAI_USER_ID=test-user
-EXPO_PUBLIC_CAI_USER_NAME=Test User
-EXPO_PUBLIC_CAI_LANGUAGE=tr-TR
-EXPO_PUBLIC_CAI_COUNTRY=TR
-~~~
+## Authentication flow
 
-If a direct API override is needed instead, set EXPO_PUBLIC_CAI_API_BASE_URL to the device-reachable backend URL and add the WebView's exact scheme, host, and Vite port to CAICore/.env. For the Android Emulator example, preserve the existing localhost entries and add http://10.0.2.2:5174:
+1. The app starts on the login screen and takes a customer id: either a configured sample user or one typed in.
+2. `services/ceremeetAuth.ts` posts that id to `https://api.ceremeet.com/api/auth/watersLogin` with the service key and receives the customer's `access_token`.
+3. The same module then calls `GET https://api.ceremeet.com/api/users/me` with the minted token. This is a pre-flight of the backend gate, using the same reason codes; it is what catches a token that logs in but would be refused mid-conversation, and it confirms `isWatersUser` and the derived `consumer_id` before the chat opens.
+4. On success the session — token, email, derived `consumer_id` — is held in React state only. It is never written to storage, a route param, or a log, so relaunching the app returns to the login screen.
+5. The chat screen redirects to the login screen whenever there is no session, so the WebView is only ever mounted with a verified token.
+6. `ChatWebView` injects the token into `window.__CHAT_BACKEND_CONTEXT__` before the widget bundle runs. The widget forwards it as `Authorization: Bearer` on every API call and keeps it out of the conversation metadata it persists.
+7. The backend validates the token again, checks `isWatersUser`, derives the customer id, and runs every CRM lookup as that customer. A session without a valid token is rejected with the pre-approved unauthorized message and makes zero CRM calls.
 
-~~~dotenv
-# This native repository's .env
-EXPO_PUBLIC_CAI_API_BASE_URL=http://10.0.2.2:8000
+Sign out from the chat screen clears the session and returns to the login screen.
 
-# The global repository's CAICore/.env
-ALLOWED_ORIGINS=http://localhost:5173,http://localhost:5174,http://localhost:5175,http://10.0.2.2:5174
-~~~
+The injection contract is specified by the backend repository's `docs/mobile-app-widget-integration.md`. The token must be set through `injectedJavaScriptBeforeContentLoaded`, not `injectedJavaScript`, which runs after the widget has already read the global.
 
-Restart Expo with --clear after changing .env.
+No browser-redirect login is involved, so no system-browser handoff is needed. A redirect-based identity provider would still be unsupported here, because cross-origin HTTP(S) navigation leaves the WebView and would need a separately designed system-browser/deep-link callback.
 
-## Run the global stack
+## Run the backend stack
 
-Complete-stack, Vite, and live-action smoke require the companion global native-action producer and dispatcher. Use a global checkout of `feat/native-client-actions` at `66c88d5`, or any descendant that contains it. Replace the placeholder below with that checkout and verify the ancestry before starting services:
+Sign-in works against CereMeet alone, but chat requires the Erikli backend and widget. Use the `nestle-waters-tr-go` checkout:
 
 ~~~bash
-cd /path/to/global-checkout-containing-66c88d5
-git merge-base --is-ancestor 66c88d5 HEAD
+cd /path/to/nestle-waters-tr-go
+docker compose up -d --build caicore webfrontend
 ~~~
 
-An ancestry-check failure means that checkout cannot produce the live native action and is not a valid smoke target. For rollout, deploy the global revision first and this native host second; deploying the native host first leaves it without the required producer/dispatcher.
+That stack serves the widget and the backend behind their configured hostnames, with `WATERS_WIDGET_TEST_MODE` defaulting to `0` — the state this host expects. Setting it to `1` re-enables a shared bypass marker that authorizes a fixed test customer with no token, which makes the sign-in exercised here meaningless; leave it off.
 
-The verified global checkout requires local secret files before Compose or Vite smoke. Create both backend files first:
-
-~~~bash
-cd /path/to/global-checkout-containing-66c88d5
-cp CAICore/.env.example CAICore/.env
-cp WatersMCPServer/.env.example WatersMCPServer/.env
-~~~
-
-For direct local CAICore credentials, remove or comment the sample KEY_VAULT_URL unless it names a reachable vault, then add valid NesGen values to CAICore/.env:
-
-~~~dotenv
-NESGEN_ENDPOINT=<NesGen base endpoint>
-NESGEN_CLIENT_ID=<NesGen client id>
-NESGEN_CLIENT_SECRET=<NesGen client secret>
-~~~
-
-Alternatively, configure a real KEY_VAULT_URL plus the Azure service-principal credentials required by the local container. In WatersMCPServer/.env, confirm WATERS_API_URL and fill WATERS_API_USER, WATERS_API_PASSWORD, WATERS_API_SK, TEMP_CUSTOMER_ID, and TEMP_CONSUMER_CONNECTION_ID with the approved pre-production values. Never commit either populated file.
-
-The Compose stack provides Cosmos, the CRM tool service, and CAICore. Start it only after those files are ready:
-
-~~~bash
-cd /path/to/global-checkout-containing-66c88d5
-docker compose -f docker-compose.dev.yaml up --build
-~~~
-
-The Vite frontend is a separate development process. Before starting it, create WebFrontend/.env.local with exactly one agent selector. The current global configuration uses the erikli request key and sets `auth.enabled: false`, so the recommended file is:
-
-~~~dotenv
-VITE_AGENT_KEY=erikli
-~~~
-
-WEB_ENTRY_POINT_ID=erikli is the entry-point alternative; do not set both selectors. For the recommended same-origin development path, leave VITE_API_BASE_URL and WEB_API_BASE_URL unset so /v1 uses Vite's proxy. Then run:
-
-~~~bash
-cd /path/to/global-checkout-containing-66c88d5/WebFrontend
-npm ci
-npm run dev -- --host 0.0.0.0
-~~~
-
-Use the actual Vite port printed by that command in EXPO_PUBLIC_CAI_FRONTEND_URL. Then start this native host with npx expo start --clear.
+Secrets for that stack live in its own git-ignored .env files; see its README.
 
 ## Runtime ownership
 
 - ChatWebView loads EXPO_PUBLIC_CAI_FRONTEND_URL directly. It does not generate an HTML wrapper or inject an SDK.
-- The current Erikli target has `auth.enabled: false`; direct load and REST/SSE run without login.
-- If authentication is enabled in a future target, the global frontend's AuthProvider remains the only permitted token owner.
-- The global frontend creates conversations through REST and consumes live assistant activity through SSE.
-- The native host never fetches conversation history, opens the SSE stream, or owns tokens.
+- This host owns the token: it verifies it, holds it in memory, and injects it. It does not open the conversation stream, fetch conversation history, or parse chat payloads.
+- The widget owns conversation transport and remains the only component that attaches the bearer to backend calls.
 - The native host listens only for current WebView bridge messages; restored or refetched history cannot replay native navigation.
-
-Auth-enabled Expo hosting is currently unsupported. Cross-origin HTTP(S) navigation leaves the WebView, so a production auth design must separately implement and test a system-browser/deep-link callback that returns the auth result while preserving the WebView session context. Retaining third-party cookies does not supply that handoff.
 
 ## Native navigation bridge
 
@@ -158,7 +118,7 @@ An accepted action immediately calls router.replace for /main-page. A screen-lif
 
 ## Verification and smoke checks
 
-Automated coverage lives in __tests__ and exercises bootstrap projection, strict action parsing, immediate duplicate-safe routing, incident display/back behavior, URL classification, WebView wiring, and cache flags.
+Automated coverage lives in __tests__ and exercises sample-user projection, the watersLogin exchange and the CereMeet verification with their reason codes, login success and rejection paths, the unauthenticated chat redirect, bootstrap projection including the token field, strict action parsing, immediate duplicate-safe routing, incident display/back behavior, URL classification, WebView wiring, and cache flags.
 
 Before handoff, run the install and verification commands above plus:
 
@@ -172,4 +132,4 @@ git diff --check
 
 Live device status: not completed in this environment. Automated checks do not substitute for this matrix.
 
-When a suitable environment is available, use the verified companion global revision and the current auth-disabled Erikli target. Verify direct frontend loading; conversation REST and SSE without login; actions with and without case_id; duplicate suppression; Back to chat; same-origin, external, and blocked link behavior; and no redirect after leaving and re-entering chat or restoring history.
+When a suitable environment is available, verify: sign-in with a valid sample user; sign-in with a typed customer id; rejection messages for an unknown customer id, a missing login key, and a non-Waters account; that the chat tab redirects to login before sign-in and after sign-out; that CRM answers reflect the signed-in customer rather than a shared test customer; actions with and without case_id; duplicate suppression; Back to chat; same-origin, external, and blocked link behavior; and no redirect after leaving and re-entering chat or restoring history.
