@@ -19,6 +19,8 @@ export interface WatersLoginResult {
   accessToken?: string;
   email?: string;
   reason?: string;
+  /** CereMeet's own failure message, when it sent one. Never contains a credential. */
+  detail?: string;
 }
 
 /**
@@ -32,6 +34,8 @@ export interface CereMeetVerification {
   consumerId?: string;
   isWatersUser: boolean;
   reason?: string;
+  /** CereMeet's own failure message, when it sent one. Never contains a credential. */
+  detail?: string;
 }
 
 /**

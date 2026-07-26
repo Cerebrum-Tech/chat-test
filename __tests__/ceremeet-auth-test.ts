@@ -138,6 +138,20 @@ describe('watersLogin', () => {
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
+  it("carries CereMeet's own failure message through to the caller", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue(jsonResponse(401, { status: 'fail', message: 'Invalid API key' }));
+
+    const result = await watersLogin('customer-guid', { apiKey: 'wrong-key', fetchImpl });
+
+    expect(result).toEqual({
+      ok: false,
+      reason: 'ceremeet_login_status_401',
+      detail: 'Invalid API key',
+    });
+  });
+
   it('reports a distinct reason code for each login failure shape', async () => {
     const failing = async (impl: jest.Mock) =>
       (await watersLogin('customer-guid', { apiKey: 'service-key', fetchImpl: impl })).reason;

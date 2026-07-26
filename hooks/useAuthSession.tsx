@@ -33,7 +33,12 @@ export const AuthSessionProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const login = await watersLogin(customerId);
       if (!login.ok || !login.accessToken) {
         setSession(null);
-        return { authenticated: false, isWatersUser: false, reason: login.reason };
+        return {
+          authenticated: false,
+          isWatersUser: false,
+          reason: login.reason,
+          detail: login.detail,
+        };
       }
 
       const result = await verifyCereMeetUser(login.accessToken);

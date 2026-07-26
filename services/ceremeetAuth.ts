@@ -59,7 +59,19 @@ export const watersLogin = async (
     clearTimeout(timer);
   }
 
-  if (response.status !== 200) return { ok: false, reason: `ceremeet_login_status_${response.status}` };
+  if (response.status !== 200) {
+    // Surface CereMeet's own wording: a 401 is "Invalid API key" whether the key is
+    // wrong, truncated, or scheme-prefixed, so the bare status alone cannot be acted on.
+    // The body carries no credential — only a short status message.
+    let detail: string | undefined;
+    try {
+      const failure = (await response.json()) as { message?: unknown };
+      if (typeof failure?.message === 'string') detail = failure.message;
+    } catch {
+      detail = undefined;
+    }
+    return { ok: false, reason: `ceremeet_login_status_${response.status}`, detail };
+  }
 
   let payload: unknown;
   try {

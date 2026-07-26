@@ -31,12 +31,13 @@ const REASON_TEXT: Record<string, string> = {
   not_waters_user: 'This account is not flagged as a Waters user, so the chatbot will reject it.',
 };
 
-const describeReason = (reason?: string): string => {
+const describeReason = (reason?: string, detail?: string): string => {
   if (!reason) return 'Sign-in failed.';
   if (REASON_TEXT[reason]) return REASON_TEXT[reason];
   if (reason.startsWith('ceremeet_login_status_')) {
     const code = reason.replace('ceremeet_login_status_', '');
-    return `CereMeet refused the login (HTTP ${code}). Check the customer id and the login key.`;
+    const said = detail ? ` CereMeet said: "${detail}".` : '';
+    return `CereMeet refused the login (HTTP ${code}).${said} Only the key can cause a 401 — an unknown customer id still succeeds.`;
   }
   if (reason.startsWith('ceremeet_api_status_')) {
     return `CereMeet rejected the minted token (HTTP ${reason.replace('ceremeet_api_status_', '')}).`;
@@ -59,7 +60,7 @@ export default function LoginScreen() {
         router.replace('/(tabs)/chat');
         return;
       }
-      setError(describeReason(result.reason));
+      setError(describeReason(result.reason, result.detail));
     },
     [router, signIn],
   );
