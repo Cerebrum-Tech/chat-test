@@ -115,6 +115,16 @@ describe('watersLogin', () => {
     expect(JSON.parse(init.body)).toEqual({ customer_id: 'customer-guid' });
   });
 
+  it('strips a scheme prefix pasted in with the key', async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse(200, LOGIN_OK));
+
+    await watersLogin('customer-guid', { apiKey: '  Bearer service-key ', fetchImpl });
+
+    // Without the strip this sends "Bearer Bearer service-key", which CereMeet rejects
+    // with the same 401 as a wrong key.
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer service-key');
+  });
+
   it('refuses to call out without a customer id or a login key', async () => {
     const fetchImpl = jest.fn();
     expect(await watersLogin('   ', { apiKey: 'service-key', fetchImpl })).toEqual({

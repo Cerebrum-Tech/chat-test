@@ -30,7 +30,12 @@ export const watersLogin = async (
   const id = typeof customerId === 'string' ? customerId.trim() : '';
   if (!id) return { ok: false, reason: 'missing_customer_id' };
 
-  const key = (apiKey ?? process.env.EXPO_PUBLIC_CAI_WATERS_LOGIN_KEY ?? '').trim();
+  // Tolerate a configured value that already carries the scheme. Pasting the whole
+  // Authorization header out of Postman is the obvious mistake, and it fails as an
+  // indistinguishable "Invalid API key" 401 — the same response as a genuinely wrong key.
+  const key = (apiKey ?? process.env.EXPO_PUBLIC_CAI_WATERS_LOGIN_KEY ?? '')
+    .trim()
+    .replace(/^Bearer\s+/i, '');
   if (!key) return { ok: false, reason: 'missing_login_key' };
 
   const doFetch = fetchImpl ?? fetch;
