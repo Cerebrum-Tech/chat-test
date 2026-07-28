@@ -3,7 +3,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
 import { parseNavigationRequest } from '../services/navigationAction';
 import { buildWebViewBootstrap } from '../services/webViewBootstrap';
-import { classifyWebViewUrl } from '../services/webViewUrlPolicy';
+import { classifyWebViewUrl, parseAdditionalOrigins } from '../services/webViewUrlPolicy';
 import type { ChatWebViewProps } from '../types/webview';
 
 export const ChatWebView: React.FC<ChatWebViewProps> = ({
@@ -14,6 +14,12 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
   const webViewRef = useRef<WebView>(null);
 
   const frontendUrl = process.env.EXPO_PUBLIC_CAI_FRONTEND_URL?.trim() ?? '';
+  // The frontend may forward to another host that serves the same chat. That hop is
+  // cross-origin, so the target must be listed or the WebView sends it to the system
+  // browser and the session is lost.
+  const additionalOrigins = parseAdditionalOrigins(
+    process.env.EXPO_PUBLIC_CAI_ALLOWED_ORIGINS,
+  );
   // Identity comes from the verified session, not from configuration: the backend derives
   // the CRM customer from the token itself, so a stale EXPO_PUBLIC_CAI_USER_ID would only
   // describe a different user than the one actually signed in. Locale stays configurable
@@ -36,7 +42,7 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
 
   const handleShouldStartLoadWithRequest = (request: { url?: string }) => {
     const url = request.url ?? '';
-    const decision = classifyWebViewUrl(url, frontendUrl);
+    const decision = classifyWebViewUrl(url, frontendUrl, additionalOrigins);
     if (decision === 'allow') return true;
     if (decision === 'open-external') {
       void Linking.openURL(url).catch(() => {
