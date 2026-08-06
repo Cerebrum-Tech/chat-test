@@ -1,6 +1,6 @@
 import React from 'react';
 import { Linking, View as MockView } from 'react-native';
-import { render } from '@testing-library/react-native';
+import { render, waitFor } from '@testing-library/react-native';
 
 import { ChatWebView } from '../components/ChatWebView';
 import type { AuthSession } from '../types/auth';
@@ -46,6 +46,66 @@ describe('ChatWebView', () => {
       webView.props.onShouldStartLoadWithRequest({ url: 'data:text/plain,x' }),
     ).toBe(false);
     expect(openUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('dials the bare number when the platform refuses the post-dial suffix', async () => {
+    // The customer-service chip. iOS rejects `tel:` numbers containing a pause character,
+    // which used to leave the button doing nothing whatsoever.
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const openUrl = jest
+      .spyOn(Linking, 'openURL')
+      .mockRejectedValueOnce(new Error('Unable to open URL'))
+      .mockResolvedValue(true);
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+
+    expect(
+      getByTestId('webview').props.onShouldStartLoadWithRequest({ url: 'tel:4440222,1' }),
+    ).toBe(false);
+
+    await waitFor(() => expect(openUrl).toHaveBeenCalledTimes(2));
+    expect(openUrl).toHaveBeenNthCalledWith(1, 'tel:4440222,1');
+    expect(openUrl).toHaveBeenNthCalledWith(2, 'tel:4440222');
+  });
+
+  it('retries when the platform resolves false instead of rejecting', async () => {
+    // iOS reports a declined open by resolving FALSE. Only catching rejections is why the
+    // Simulator's refusal was invisible.
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const openUrl = jest
+      .spyOn(Linking, 'openURL')
+      .mockResolvedValueOnce(false as unknown as void)
+      .mockResolvedValue(true);
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+
+    getByTestId('webview').props.onShouldStartLoadWithRequest({ url: 'tel:4440222,1' });
+
+    await waitFor(() => expect(openUrl).toHaveBeenCalledTimes(2));
+    expect(openUrl).toHaveBeenNthCalledWith(2, 'tel:4440222');
+  });
+
+  it('stops at the first candidate the platform accepts', async () => {
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const openUrl = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+
+    getByTestId('webview').props.onShouldStartLoadWithRequest({ url: 'tel:4440222,1' });
+
+    await waitFor(() => expect(openUrl).toHaveBeenCalledWith('tel:4440222,1'));
+    expect(openUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('warns once when no candidate could be opened', async () => {
+    // The Simulator has no Phone app, so both attempts fail. The warning is the only
+    // signal a tester gets, and before this it never fired.
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    jest.spyOn(Linking, 'openURL').mockResolvedValue(false as unknown as void);
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+
+    getByTestId('webview').props.onShouldStartLoadWithRequest({ url: 'tel:4440222,1' });
+
+    await waitFor(() => expect(warn).toHaveBeenCalledTimes(1));
+    expect(warn).toHaveBeenCalledWith('External URL could not be opened');
   });
 
   it('emits navigation only for a strict lowercase bridge message', () => {

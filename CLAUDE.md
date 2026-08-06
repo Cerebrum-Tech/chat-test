@@ -65,6 +65,12 @@ services/webViewUrlPolicy.ts is the source of URL decisions:
 - cross-origin HTTP(S), tel, and mailto: open through Linking;
 - malformed, unsupported, or unsafe schemes: block.
 
+Opening an external URL is not a single attempt. `Linking.openURL` is typed `Promise<void>`, but iOS signals a declined open by resolving **false** rather than rejecting, and RCTLinkingManager does exactly that for every `tel:` URL on the Simulator. Treat a resolved `false` as failure; treat a resolved `undefined` as success so a platform that reports nothing is not read as a refusal.
+
+services/dialUrl.ts then supplies the retry order for `tel:`. The catalog authors the customer-service number with a post-dial suffix (`tel:4440222,1` — dial, then send DTMF 1 for the IVR branch), which is approved content pinned byte-identical across seven locales and must not be rewritten upstream. iOS refuses `tel:` numbers containing a pause character, so the host tries the authored URL first and falls back to the bare number. Other schemes yield exactly one candidate and are never rewritten — a comma is legal in a query string.
+
+No `tel:` URL can dial on the iOS Simulator; that path is only testable on a device.
+
 components/ChatWebView.tsx disables the WebView document cache with cacheEnabled=false and cacheMode=LOAD_NO_CACHE. DOM storage stays enabled for the frontend session. Log fixed diagnostic text only; do not log URLs, identity context, route params, or credentials.
 
 The current component intentionally retains mixedContentMode="compatibility" and thirdPartyCookiesEnabled={true}. Treat both as production-hardening concerns; do not change them without a separately designed and device-tested WebView policy.
@@ -93,6 +99,7 @@ The token reaches the widget through `injectedJavaScriptBeforeContentLoaded`, ne
 - hooks/useAuthSession.tsx: in-memory session state and the sign-in/sign-out actions;
 - services/webViewBootstrap.ts: allowlisted serialization into browser globals;
 - services/webViewUrlPolicy.ts: pure URL classifier;
+- services/dialUrl.ts: pure `tel:` fallback-candidate builder;
 - services/navigationAction.ts: pure strict bridge parser and route mapping;
 - app/login.tsx: sample-user and typed-customer-id sign-in;
 - app/(tabs)/chat.tsx: auth guard and immediate one-shot route replacement;
