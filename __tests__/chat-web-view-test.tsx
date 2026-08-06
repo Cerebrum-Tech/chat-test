@@ -1,6 +1,7 @@
 import React from 'react';
 import { Linking, View as MockView } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
+import { createOnShouldStartLoadWithRequest } from 'react-native-webview/lib/WebViewShared';
 
 import { ChatWebView } from '../components/ChatWebView';
 import type { AuthSession } from '../types/auth';
@@ -46,6 +47,48 @@ describe('ChatWebView', () => {
       webView.props.onShouldStartLoadWithRequest({ url: 'data:text/plain,x' }),
     ).toBe(false);
     expect(openUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it('routes tel and mailto to our own handler rather than the library default', async () => {
+    // The library only consults onShouldStartLoadWithRequest for schemes on this list;
+    // anything else it opens itself behind a canOpenURL check that returns false on
+    // Android 11+ without a <queries> manifest entry. That is what silently swallowed the
+    // customer-service chip.
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const { getByTestId } = render(<ChatWebView session={SESSION} />);
+
+    const { originWhitelist } = getByTestId('webview').props;
+
+    // Asserted against the library's OWN matcher, not a copy of it: the entries are glob
+    // strings compiled into regexes, so "we passed 'tel:*'" is not evidence that a tel URL
+    // reaches us. Only running createOnShouldStartLoadWithRequest proves it.
+    const ours = jest.fn().mockReturnValue(false);
+    const handler = createOnShouldStartLoadWithRequest(jest.fn(), originWhitelist, ours);
+    const request = (url: string) => ({
+      nativeEvent: {
+        url,
+        lockIdentifier: 1,
+        isTopFrame: true,
+        navigationType: 'click' as const,
+        loading: false,
+        title: '',
+        canGoBack: false,
+        canGoForward: false,
+      },
+    });
+    for (const url of [
+      'tel:4440222,1',
+      'mailto:support@example.test',
+      'https://external.example/help',
+    ]) {
+      handler(request(url) as Parameters<typeof handler>[0]);
+    }
+
+    expect(ours.mock.calls.map(([event]: [{ url: string }]) => event.url)).toEqual([
+      'tel:4440222,1',
+      'mailto:support@example.test',
+      'https://external.example/help',
+    ]);
   });
 
   it('dials the bare number when the platform refuses the post-dial suffix', async () => {

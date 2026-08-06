@@ -89,6 +89,22 @@ export const ChatWebView: React.FC<ChatWebViewProps> = ({
       <WebView
         ref={webViewRef}
         source={{ uri: frontendUrl }}
+        // Not a permission list — it decides WHO classifies the URL. react-native-webview
+        // handles any scheme outside this list itself, behind a Linking.canOpenURL check,
+        // and only consults onShouldStartLoadWithRequest for schemes inside it
+        // (WebViewShared.createOnShouldStartLoadWithRequest: the handler is the `else if`).
+        //
+        // With the default ['http://*','https://*'], `tel:` took the library's path and
+        // died there: canOpenURL returns false on Android 11+ unless the app declares a
+        // <queries> entry for the dial intent, so the customer-service chip only ever
+        // produced "Can't open url: tel:4440222,1". openURL itself works in that case —
+        // package visibility filters the query, not the launch — so the fix is to route
+        // the scheme to our own handler, which calls openURL directly.
+        //
+        // Safety is unchanged: classifyWebViewUrl still decides, and it returns
+        // 'open-external' for tel/mailto (so this returns false and the WebView never
+        // navigates) and 'block' for everything else.
+        originWhitelist={['http://*', 'https://*', 'tel:*', 'mailto:*']}
         injectedJavaScriptBeforeContentLoaded={injectedJavaScriptBeforeContentLoaded}
         onMessage={handleWebViewMessage}
         onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
