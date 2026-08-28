@@ -17,7 +17,7 @@ Location: app/
 - app/_layout.tsx declares the root stack, including main-page.
 - app/(tabs)/_layout.tsx declares Home, Chat, and Explore tabs.
 - app/(tabs)/chat.tsx renders ChatWebView and performs one immediate route replacement.
-- app/main-page.tsx displays the optional incident ID and returns to chat.
+- app/main-page.tsx displays the optional incident and address IDs and returns to chat.
 
 Screens depend on components, service outputs, and shared types. They do not parse raw bridge JSON or classify URLs.
 
@@ -70,7 +70,7 @@ Live native actions depend on the producer and dispatcher from global `feat/nati
 
 1. The live frontend posts an exact lowercase navigation envelope through window.ReactNativeWebView.
 2. ChatWebView receives the current onMessage event.
-3. parseNavigationRequest validates exact keys, values, and case_id type.
+3. parseNavigationRequest validates exact keys, values, and case_id/address_id types.
 4. ChatWebView emits a typed MainPageNavigationRequest.
 5. ChatScreen ignores the callback if a replacement is already in flight.
 6. ChatScreen immediately calls router.replace for /main-page.

@@ -6,14 +6,19 @@ export interface NavigationAction {
   process: 'GotoPage';
   data: {
     page_name: 'MainPage';
+    /** CRM incident the conversation opened. */
     case_id?: string;
+    /** Consumer address the main page should open on. */
+    address_id?: string;
   };
 }
 
 export type MainPageNavigationRequest = {
   pathname: '/main-page';
+  /** Present only when at least one id survived validation; each key independently optional. */
   params?: {
-    case_id: string;
+    case_id?: string;
+    address_id?: string;
   };
 };
 

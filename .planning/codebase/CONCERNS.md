@@ -66,7 +66,7 @@ Mitigation: treat tightening either prop as a separate hardening change with a d
 
 ### The bridge is intentionally strict
 
-Any spelling, casing, extra key, unknown destination, or incorrect case_id type is ignored. This prevents accidental native routing but requires coordinated contract changes across the global frontend and this host.
+Any spelling, casing, extra key, unknown destination, or incorrect case_id/address_id type is ignored. This prevents accidental native routing but requires coordinated contract changes across the global frontend and this host.
 
 Mitigation: update types and parser tests together, and preserve exact contract examples in maintained docs.
 

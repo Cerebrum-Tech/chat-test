@@ -46,14 +46,15 @@ Accept only this exact, case-sensitive shape:
   "process": "GotoPage",
   "data": {
     "page_name": "MainPage",
-    "case_id": "optional CRM incident id"
+    "case_id": "optional CRM incident id",
+    "address_id": "optional consumer address id the main page should open on"
   }
 }
 ~~~
 
-The parser uses an exact key allowlist. It rejects malformed input, extra keys, unknown action values, and non-string case_id values. Missing, empty, or whitespace-only case_id values map to /main-page without route params. Preserve a nonblank value byte-for-byte.
+The parser uses an exact key allowlist. It rejects malformed input, extra keys, unknown action values, and a non-string case_id or address_id. The two ids are independently optional: missing, empty, or whitespace-only values are dropped from the route params while navigation still happens, and an envelope carrying neither still maps to /main-page. Preserve a nonblank value byte-for-byte. Widening data to a second id does not widen it to unknown keys — anything outside {page_name, case_id, address_id} remains fatal.
 
-Navigation is deferred by NAVIGATION_DELAY_MS (5s), exported from app/(tabs)/chat.tsx, so the flow's closing message can be read before the route changes. The in-flight flag is claimed when the envelope arrives, not when the timer fires, so repeat deliveries during the wait are suppressed rather than queueing a second redirect; the pending timer is cleared on unmount so it cannot fire against a screen the user has already left. app/main-page.tsx displays the incident ID or Not provided and Back to chat replaces with /(tabs)/chat.
+Navigation is deferred by NAVIGATION_DELAY_MS (5s), exported from app/(tabs)/chat.tsx, so the flow's closing message can be read before the route changes. The in-flight flag is claimed when the envelope arrives, not when the timer fires, so repeat deliveries during the wait are suppressed rather than queueing a second redirect; the pending timer is cleared on unmount so it cannot fire against a screen the user has already left. app/main-page.tsx displays the incident ID and the address ID, each or Not provided, and Back to chat replaces with /(tabs)/chat.
 
 The wait is not a confirmation step: it is unattended and has no prompt or cancel affordance. Do not add one, and do not persist bridge messages for replay.
 
@@ -105,7 +106,7 @@ The token reaches the widget through `injectedJavaScriptBeforeContentLoaded`, ne
 - services/navigationAction.ts: pure strict bridge parser and route mapping;
 - app/login.tsx: sample-user and typed-customer-id sign-in;
 - app/(tabs)/chat.tsx: auth guard and immediate one-shot route replacement;
-- app/main-page.tsx: optional incident display and return-to-chat behavior;
+- app/main-page.tsx: optional incident and address display, and return-to-chat behavior;
 - types/auth.ts: session, sample-user, and verification contracts;
 - types/webview.ts: bridge and native route types;
 - __tests__/: Jest and React Native Testing Library coverage.

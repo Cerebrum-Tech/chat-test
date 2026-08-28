@@ -23,7 +23,7 @@
 - Boolean refs and state describe their condition, such as navigationInFlight.
 - Platform variants use suffixes such as .ios.tsx and .web.ts.
 
-Bridge naming is a wire contract, not a TypeScript naming preference. Its key names are lowercase and case-sensitive: output_type, process, data, page_name, and case_id.
+Bridge naming is a wire contract, not a TypeScript naming preference. Its key names are lowercase and case-sensitive: output_type, process, data, page_name, case_id, and address_id.
 
 ## Module boundaries
 
@@ -50,8 +50,8 @@ Bridge naming is a wire contract, not a TypeScript naming preference. Its key na
 - Require the exact top-level and data key sets.
 - Require output_type=navigation, process=GotoPage, and page_name=MainPage.
 - Reject extra properties and unknown values.
-- Accept case_id only as a string.
-- Use trim only to determine whether case_id is blank; preserve a nonblank value exactly.
+- Accept case_id and address_id only as strings, and treat each as independently optional.
+- Use trim only to determine whether an id is blank; preserve a nonblank value exactly.
 - Return null for every unsupported input.
 - Map through an explicit route allowlist. Never accept an arbitrary native pathname.
 

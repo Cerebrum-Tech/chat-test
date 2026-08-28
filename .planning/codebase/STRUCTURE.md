@@ -66,7 +66,7 @@ Owns the native chat screen lifecycle. It receives typed navigation requests, su
 
 ### app/main-page.tsx
 
-Owns the destination screen. It reads optional case_id route params, displays the first value or Not provided, and replaces back to the chat tab.
+Owns the destination screen. It reads the optional case_id and address_id route params, displays the first value of each or Not provided, and replaces back to the chat tab.
 
 ### components/ChatWebView.tsx
 

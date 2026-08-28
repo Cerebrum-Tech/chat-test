@@ -49,14 +49,15 @@ The only accepted action is:
   "process": "GotoPage",
   "data": {
     "page_name": "MainPage",
-    "case_id": "optional CRM incident id"
+    "case_id": "optional CRM incident id",
+    "address_id": "optional consumer address id the main page should open on"
   }
 }
 ~~~
 
 services/navigationAction.ts validates the exact keys and values. components/ChatWebView.tsx emits the resulting typed request. app/(tabs)/chat.tsx immediately replaces with /main-page once per screen lifetime.
 
-MainPage shows the exact nonblank case_id or Not provided and replaces back to /(tabs)/chat.
+MainPage shows the exact nonblank case_id and address_id, or Not provided for whichever is missing, and replaces back to /(tabs)/chat.
 
 ## Operating-system URL integration
 

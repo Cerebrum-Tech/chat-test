@@ -31,7 +31,7 @@ Do not run npm ci concurrently with Jest, TypeScript, lint, or Expo commands bec
 | test-setup-test.ts | Expo Jest preset baseline. |
 | web-view-bootstrap-test.ts | API assignment, four public context fields, optional values, JSON escaping, and unsupported property-name/type rejection. Allowed string content is intentionally not inspected. |
 | web-view-url-policy-test.ts | Same-origin allow, cross-origin and device-link external handling, invalid URLs, invalid frontend origin, and blocked schemes. |
-| navigation-action-test.ts | Exact lowercase envelope, optional case_id, blank omission, strict keys, unknown values, bad types, and malformed JSON. |
+| navigation-action-test.ts | Exact lowercase envelope, optional case_id and address_id (separately and together), blank omission, strict keys, unknown values, bad types, and malformed JSON. |
 | chat-web-view-test.tsx | Direct source, no-cache props, URL decision wiring, external Linking, and strict onMessage emission. |
 | chat-screen-test.tsx | Immediate router.replace and repeated-callback suppression without an intermediate prompt. |
 | main-page-test.tsx | Exact incident display, Not provided empty state, and Back to chat replacement. |
@@ -43,7 +43,7 @@ Do not run npm ci concurrently with Jest, TypeScript, lint, or Expo commands bec
 - Keep service tests free of React Native mocks.
 - Mock only react-native-webview when asserting WebView props.
 - Mock only expo-router when asserting route replacement and params.
-- Preserve byte-for-byte nonblank case_id values in expectations.
+- Preserve byte-for-byte nonblank case_id and address_id values in expectations.
 - Assert fixed behavior rather than implementation-private helpers.
 
 There is no enforced coverage threshold. Passing suites do not replace device-level integration checks.
@@ -90,8 +90,8 @@ Verify:
 
 1. The current `auth.enabled: false` Erikli frontend loads directly without login.
 2. Conversation creation/history REST and live SSE work without login.
-3. A live action without case_id opens /main-page immediately and displays Not provided.
-4. A new live action with a CRM incident ID displays that exact ID.
+3. A live action without case_id or address_id opens /main-page immediately and displays Not provided for both.
+4. A new live action with a CRM incident ID and a consumer address ID displays both exact IDs.
 5. Repeated delivery before unmount does not stack or replace twice.
 6. Back to chat returns to the chat tab.
 7. Same-origin HTTP(S) stays internal.

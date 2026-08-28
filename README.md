@@ -98,14 +98,15 @@ The accepted message is exact and case-sensitive:
   "process": "GotoPage",
   "data": {
     "page_name": "MainPage",
-    "case_id": "optional CRM incident id"
+    "case_id": "optional CRM incident id",
+    "address_id": "optional consumer address id the main page should open on"
   }
 }
 ~~~
 
-All key names are lowercase exactly as shown. Extra keys, unknown values, malformed JSON, and a non-string case_id are rejected. A missing or blank case_id still navigates but is omitted from the native route.
+All key names are lowercase exactly as shown. Extra keys, unknown values, malformed JSON, and a non-string case_id or address_id are rejected. The two ids are independently optional: a missing or blank one still navigates and is simply omitted from the native route.
 
-An accepted action calls router.replace for /main-page after a 5 second wait, so the flow's closing message stays readable before the screen changes. A screen-lifetime guard ignores repeated delivery, so the action does not stack or replace twice, and a redirect still pending when the chat screen unmounts is dropped rather than firing later. The destination displays the exact nonblank incident ID, or Not provided when it is absent. Back to chat replaces the route with /(tabs)/chat.
+An accepted action calls router.replace for /main-page after a 5 second wait, so the flow's closing message stays readable before the screen changes. A screen-lifetime guard ignores repeated delivery, so the action does not stack or replace twice, and a redirect still pending when the chat screen unmounts is dropped rather than firing later. The destination displays the exact nonblank incident ID and address ID, or Not provided for whichever is absent. Back to chat replaces the route with /(tabs)/chat.
 
 ## URL and cache policy
 
@@ -132,4 +133,4 @@ git diff --check
 
 Live device status: not completed in this environment. Automated checks do not substitute for this matrix.
 
-When a suitable environment is available, verify: sign-in with a valid sample user; sign-in with a typed customer id; rejection messages for an unknown customer id, a missing login key, and a non-Waters account; that the chat tab redirects to login before sign-in and after sign-out; that CRM answers reflect the signed-in customer rather than a shared test customer; actions with and without case_id; duplicate suppression; Back to chat; same-origin, external, and blocked link behavior; and no redirect after leaving and re-entering chat or restoring history.
+When a suitable environment is available, verify: sign-in with a valid sample user; sign-in with a typed customer id; rejection messages for an unknown customer id, a missing login key, and a non-Waters account; that the chat tab redirects to login before sign-in and after sign-out; that CRM answers reflect the signed-in customer rather than a shared test customer; actions with and without case_id and address_id; duplicate suppression; Back to chat; same-origin, external, and blocked link behavior; and no redirect after leaving and re-entering chat or restoring history.
