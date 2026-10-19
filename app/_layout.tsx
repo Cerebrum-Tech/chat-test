@@ -25,6 +25,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ title: 'Sign in' }} />
           <Stack.Screen name="main-page" options={{ title: 'MainPage' }} />
+          <Stack.Screen name="profile-screen" options={{ title: 'ProfileScreen' }} />
           <Stack.Screen name="+not-found" />
         </Stack>
         <StatusBar style="auto" />

@@ -185,6 +185,29 @@ describe('ChatWebView', () => {
     });
   });
 
+  it('emits the X button envelope as a ProfileScreen request', () => {
+    process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
+    const onNavigationRequest = jest.fn();
+    const { getByTestId } = render(
+      <ChatWebView session={SESSION} onNavigationRequest={onNavigationRequest} />,
+    );
+
+    getByTestId('webview').props.onMessage({
+      nativeEvent: {
+        data: JSON.stringify({
+          output_type: 'navigation',
+          process: 'GotoPage',
+          data: { page_name: 'ProfileScreen', address_id: 'address-2' },
+        }),
+      },
+    });
+
+    expect(onNavigationRequest).toHaveBeenCalledWith({
+      pathname: '/profile-screen',
+      params: { address_id: 'address-2' },
+    });
+  });
+
   it('injects the session token and derived identity before content loads', () => {
     process.env.EXPO_PUBLIC_CAI_FRONTEND_URL = 'https://chat.example.test';
     const { getByTestId } = render(<ChatWebView session={SESSION} />);

@@ -1,14 +1,15 @@
 import { Redirect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef } from 'react';
+import { BottomTabBarHeightContext } from 'expo-router/build/react-navigation/bottom-tabs';
+import { useCallback, useContext, useEffect, useRef } from 'react';
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatWebView } from '../../components/ChatWebView';
 import { useAuthSession } from '../../hooks/useAuthSession';
-import type { MainPageNavigationRequest } from '../../types/webview';
+import type { NativeNavigationRequest } from '../../types/webview';
 
 /**
- * How long the flow's closing message stays on screen before the host leaves for
- * MainPage. Replacing the route the instant the envelope arrived swapped that message
+ * How long the flow's closing message stays on screen before the host leaves for the
+ * native destination. Replacing the route the instant the envelope arrived swapped that message
  * away before it could be read, and it is the point of the whole flow.
  */
 export const NAVIGATION_DELAY_MS = 5000;
@@ -16,6 +17,8 @@ export const NAVIGATION_DELAY_MS = 5000;
 export default function ChatScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // The iOS tab bar is absolutely positioned, so without this the widget's composer sits under it.
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? insets.bottom;
   const { session, signOut } = useAuthSession();
   const navigationInFlight = useRef(false);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -29,7 +32,7 @@ export default function ChatScreen() {
     [],
   );
 
-  const handleNavigationRequest = useCallback((request: MainPageNavigationRequest) => {
+  const handleNavigationRequest = useCallback((request: NativeNavigationRequest) => {
     // Claimed up front, not when the timer fires, so repeat deliveries during the wait
     // are still suppressed rather than queueing a second redirect.
     if (navigationInFlight.current) return;
@@ -59,6 +62,7 @@ export default function ChatScreen() {
           paddingTop: Math.max(insets.top, StatusBar.currentHeight ?? 0, 48),
           paddingLeft: insets.left,
           paddingRight: insets.right,
+          paddingBottom: tabBarHeight,
         },
       ]}>
       <View style={styles.sessionBar}>
