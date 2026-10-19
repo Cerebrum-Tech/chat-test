@@ -56,9 +56,48 @@ describe('parseNavigationRequest', () => {
     });
   });
 
+  describe('ProfileScreen', () => {
+    const profile = (data: Record<string, unknown> = {}) =>
+      parseNavigationRequest(
+        JSON.stringify({ ...valid, data: { page_name: 'ProfileScreen', ...data } }),
+      );
+
+    it('maps the bare envelope to /profile-screen', () => {
+      expect(profile()).toEqual({ pathname: '/profile-screen' });
+    });
+
+    it('preserves a nonblank address_id byte-for-byte', () => {
+      const addressId = ' 8b0b3f2e-1c4d-4a77-9f1e-2b6d5c7a9e31\t';
+
+      expect(profile({ address_id: addressId })).toEqual({
+        pathname: '/profile-screen',
+        params: { address_id: addressId },
+      });
+    });
+
+    it.each(['', ' \t\n '])('omits a blank address_id while preserving navigation', (addressId) => {
+      expect(profile({ address_id: addressId })).toEqual({ pathname: '/profile-screen' });
+    });
+
+    it.each([
+      // The X button carries no incident, so case_id is an unknown key on this page.
+      { case_id: 'incident-1' },
+      { address_id: 'a', case_id: 'c' },
+      { address_id: 42 },
+      { address_id: null },
+      { extra: true },
+    ])('rejects keys or types outside its allowlist', (data) => {
+      expect(profile(data)).toBeNull();
+    });
+  });
+
   it.each([
     '',
     '{',
+    // page_name is case-sensitive and must be an own key of the route table.
+    JSON.stringify({ ...valid, data: { page_name: 'profilescreen' } }),
+    JSON.stringify({ ...valid, data: { page_name: 'toString' } }),
+    JSON.stringify({ ...valid, data: { page_name: 42 } }),
     JSON.stringify(null),
     JSON.stringify({ Process: 'GotoPage', Data: { PageName: 'MainPage', CaseId: 'legacy' } }),
     JSON.stringify({ ...valid, output_type: 'text' }),

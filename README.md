@@ -6,8 +6,8 @@ Authentication is mandatory. The backend gate validates every session's token ag
 
 ## Prerequisites
 
-- Node.js and npm compatible with Expo SDK 53.
-- An Android emulator, iOS simulator, or device that can run Expo Go.
+- Node.js and npm compatible with Expo SDK 57 (Node.js 24 LTS recommended).
+- An Android emulator, iOS simulator, or device running Expo Go for SDK 57.
 - The CereMeet watersLogin service key, and at least one CRM customer id belonging to a Waters-flagged account.
 - A reachable deployment (or local run) of the Erikli backend and widget from the `nestle-waters-tr-go` repository.
 
@@ -104,9 +104,11 @@ The accepted message is exact and case-sensitive:
 }
 ~~~
 
-All key names are lowercase exactly as shown. Extra keys, unknown values, malformed JSON, and a non-string case_id or address_id are rejected. The two ids are independently optional: a missing or blank one still navigates and is simply omitted from the native route.
+The widget's X (close) button sends the same envelope with `"page_name": "ProfileScreen"` and only an optional `address_id` — the address the user picked in the conversation. A `case_id` on ProfileScreen is rejected.
 
-An accepted action calls router.replace for /main-page after a 5 second wait, so the flow's closing message stays readable before the screen changes. A screen-lifetime guard ignores repeated delivery, so the action does not stack or replace twice, and a redirect still pending when the chat screen unmounts is dropped rather than firing later. The destination displays the exact nonblank incident ID and address ID, or Not provided for whichever is absent. Back to chat replaces the route with /(tabs)/chat.
+All key names are lowercase exactly as shown. Extra keys, unknown values, malformed JSON, and a non-string id are rejected. Each id is independently optional: a missing or blank one still navigates and is simply omitted from the native route.
+
+An accepted action calls router.replace for /main-page (MainPage) or /profile-screen (ProfileScreen) after a 5 second wait, so the flow's closing message stays readable before the screen changes. A screen-lifetime guard ignores repeated delivery, so the action does not stack or replace twice, and a redirect still pending when the chat screen unmounts is dropped rather than firing later. MainPage displays the exact nonblank incident ID and address ID, or Not provided for whichever is absent; ProfileScreen displays the address ID the same way. Back to chat replaces the route with /(tabs)/chat.
 
 ## URL and cache policy
 

@@ -2,15 +2,15 @@
 
 ## Project
 
-This Expo SDK 53 application is the native host for the Erikli chat widget. The chat tab loads that frontend directly through react-native-webview.
+This Expo SDK 57 application is the native host for the Erikli chat widget. The chat tab loads that frontend directly through react-native-webview.
 
 The native boundary has five responsibilities:
 
 1. take a CRM customer id, exchange it for that customer's CereMeet token, and hold the resulting session;
 2. inject the optional API URL, the allowlisted public user context, and the session token before frontend code runs;
 3. classify WebView navigation by URL origin and scheme;
-4. parse one exact lowercase native action;
-5. replace the native route with /main-page and provide a route back to chat.
+4. parse one of two exact lowercase native actions (MainPage, ProfileScreen);
+5. replace the native route with /main-page or /profile-screen and provide a route back to chat.
 
 The widget owns conversation transport and rendering, and is the only component that attaches the bearer to backend calls. Do not move conversation transport into this repository.
 
@@ -38,7 +38,7 @@ Device and emulator URLs must resolve back to the development host; Android Emul
 
 ## Bridge contract
 
-Accept only this exact, case-sensitive shape:
+Accept only these exact, case-sensitive shapes. The flow's closing redirect:
 
 ~~~json
 {
@@ -52,9 +52,22 @@ Accept only this exact, case-sensitive shape:
 }
 ~~~
 
-The parser uses an exact key allowlist. It rejects malformed input, extra keys, unknown action values, and a non-string case_id or address_id. The two ids are independently optional: missing, empty, or whitespace-only values are dropped from the route params while navigation still happens, and an envelope carrying neither still maps to /main-page. Preserve a nonblank value byte-for-byte. Widening data to a second id does not widen it to unknown keys — anything outside {page_name, case_id, address_id} remains fatal.
+The widget's X (close) button:
 
-Navigation is deferred by NAVIGATION_DELAY_MS (5s), exported from app/(tabs)/chat.tsx, so the flow's closing message can be read before the route changes. The in-flight flag is claimed when the envelope arrives, not when the timer fires, so repeat deliveries during the wait are suppressed rather than queueing a second redirect; the pending timer is cleared on unmount so it cannot fire against a screen the user has already left. app/main-page.tsx displays the incident ID and the address ID, each or Not provided, and Back to chat replaces with /(tabs)/chat.
+~~~json
+{
+  "output_type": "navigation",
+  "process": "GotoPage",
+  "data": {
+    "page_name": "ProfileScreen",
+    "address_id": "optional id of the address the user picked in the conversation"
+  }
+}
+~~~
+
+The parser uses a per-page exact key allowlist, held in `PAGE_ROUTES` in services/navigationAction.ts: MainPage → /main-page with {case_id, address_id}; ProfileScreen → /profile-screen with {address_id} only. It rejects malformed input, extra keys, unknown action or page values, and a non-string id. A case_id on ProfileScreen is an unknown key and fatal — the X button never carries an incident. Every id is independently optional: missing, empty, or whitespace-only values are dropped from the route params while navigation still happens, and an envelope carrying none still maps to its page's route. Preserve a nonblank value byte-for-byte. Adding a page or id does not widen any page to unknown keys — anything outside that page's list remains fatal.
+
+Navigation is deferred by NAVIGATION_DELAY_MS (5s), exported from app/(tabs)/chat.tsx, so the flow's closing message can be read before the route changes. The in-flight flag is claimed when the envelope arrives, not when the timer fires, so repeat deliveries during the wait are suppressed rather than queueing a second redirect; the pending timer is cleared on unmount so it cannot fire against a screen the user has already left. Both pages share this one delay and guard. app/main-page.tsx displays the incident ID and the address ID, each or Not provided; app/profile-screen.tsx displays the address ID or Not provided; both replace with /(tabs)/chat from Back to chat.
 
 The wait is not a confirmation step: it is unattended and has no prompt or cancel affordance. Do not add one, and do not persist bridge messages for replay.
 
@@ -107,6 +120,7 @@ The token reaches the widget through `injectedJavaScriptBeforeContentLoaded`, ne
 - app/login.tsx: sample-user and typed-customer-id sign-in;
 - app/(tabs)/chat.tsx: auth guard and immediate one-shot route replacement;
 - app/main-page.tsx: optional incident and address display, and return-to-chat behavior;
+- app/profile-screen.tsx: optional address display for the X-button redirect, and return-to-chat behavior;
 - types/auth.ts: session, sample-user, and verification contracts;
 - types/webview.ts: bridge and native route types;
 - __tests__/: Jest and React Native Testing Library coverage.
