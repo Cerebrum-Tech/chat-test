@@ -2,7 +2,7 @@
 
 ## Project
 
-This Expo SDK 53 application is the native host for the Erikli chat widget. The chat tab loads that frontend directly through react-native-webview.
+This Expo SDK 57 application is the native host for the Erikli chat widget. The chat tab loads that frontend directly through react-native-webview.
 
 The native boundary has five responsibilities:
 

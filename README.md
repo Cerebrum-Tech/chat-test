@@ -6,8 +6,8 @@ Authentication is mandatory. The backend gate validates every session's token ag
 
 ## Prerequisites
 
-- Node.js and npm compatible with Expo SDK 53.
-- An Android emulator, iOS simulator, or device that can run Expo Go.
+- Node.js and npm compatible with Expo SDK 57 (Node.js 24 LTS recommended).
+- An Android emulator, iOS simulator, or device running Expo Go for SDK 57.
 - The CereMeet watersLogin service key, and at least one CRM customer id belonging to a Waters-flagged account.
 - A reachable deployment (or local run) of the Erikli backend and widget from the `nestle-waters-tr-go` repository.
 

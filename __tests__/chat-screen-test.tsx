@@ -1,8 +1,16 @@
 import React from 'react';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render as renderScreen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
+import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 
 import ChatScreen, { NAVIGATION_DELAY_MS } from '../app/(tabs)/chat';
 import type { AuthSession } from '../types/auth';
+
+const render = (ui: React.ReactElement, top = 0) => renderScreen(
+  <SafeAreaInsetsContext.Provider value={{ top, left: 0, right: 0, bottom: 0 }}>
+    {ui}
+  </SafeAreaInsetsContext.Provider>,
+);
 
 const mockReplace = jest.fn();
 const mockSignOut = jest.fn();
@@ -60,6 +68,12 @@ jest.mock('../components/ChatWebView', () => {
 describe('ChatScreen', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
+
+  it.each([0, 80])('reserves top clearance when the device reports an inset of %i', (top) => {
+    const screen = render(<ChatScreen />, top);
+    const style = StyleSheet.flatten(screen.getByTestId('chat-screen').props.style);
+    expect(style.paddingTop).toBeGreaterThanOrEqual(Math.max(48, top));
+  });
 
   it('leaves the closing message on screen for the delay, then replaces once', () => {
     const { getByTestId, queryByText } = render(<ChatScreen />);

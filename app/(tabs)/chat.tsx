@@ -1,6 +1,7 @@
 import { Redirect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef } from 'react';
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChatWebView } from '../../components/ChatWebView';
 import { useAuthSession } from '../../hooks/useAuthSession';
 import type { MainPageNavigationRequest } from '../../types/webview';
@@ -14,6 +15,7 @@ export const NAVIGATION_DELAY_MS = 5000;
 
 export default function ChatScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { session, signOut } = useAuthSession();
   const navigationInFlight = useRef(false);
   const navigationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -48,12 +50,26 @@ export default function ChatScreen() {
   if (!session) return <Redirect href="/login" />;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View
+      testID="chat-screen"
+      style={[
+        styles.container,
+        {
+          // Reserve space even when the native inset initially reports zero.
+          paddingTop: Math.max(insets.top, StatusBar.currentHeight ?? 0, 48),
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+        },
+      ]}>
       <View style={styles.sessionBar}>
         <Text style={styles.sessionLabel} numberOfLines={1}>
           {session.label} · {session.consumerId}
         </Text>
-        <Pressable testID="sign-out" accessibilityRole="button" onPress={signOut}>
+        <Pressable
+          testID="sign-out"
+          accessibilityRole="button"
+          onPress={signOut}
+          style={({ pressed }) => [styles.signOutButton, pressed && styles.signOutButtonPressed]}>
           <Text style={styles.signOut}>Sign out</Text>
         </Pressable>
       </View>
@@ -62,7 +78,7 @@ export default function ChatScreen() {
         onNavigationRequest={handleNavigationRequest}
         style={styles.webview}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -72,17 +88,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#141414',
   },
   sessionBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexShrink: 0,
     gap: 12,
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingTop: 24,
+    paddingBottom: 12,
   },
   sessionLabel: {
     flexShrink: 1,
     color: '#b3b3b3',
     fontSize: 12,
+  },
+  signOutButton: {
+    alignSelf: 'flex-end',
+    minHeight: 48,
+    minWidth: 96,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#292929',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  signOutButtonPressed: {
+    backgroundColor: '#454545',
   },
   signOut: {
     color: '#e50914',
